@@ -1,0 +1,18 @@
+# Global code owners
+* @LeoPaulJulie
+
+# Package-specific ownership
+packages/ @LeoPaulJulie
+
+# Documentation
+docs/ @LeoPaulJulie
+*.md @LeoPaulJulie
+
+# Configuration files
+melos.yaml @LeoPaulJulie
+pubspec.yaml @LeoPaulJulie
+analysis_options.yaml @LeoPaulJulie
+
+# Scripts and CI
+scripts/ @LeoPaulJulie
+.github/ @LeoPaulJulie
