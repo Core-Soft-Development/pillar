@@ -1,0 +1,25 @@
+name: pillar_core
+description: A core package for Pillar framework providing dependency injection and clean architecture foundation
+version: 1.1.0
+homepage: https://github.com/Core-Soft-Development/pillar
+repository: https://github.com/Core-Soft-Development/pillar
+issue_tracker: https://github.com/Core-Soft-Development/pillar/issues
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.35.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  meta: ^1.12.0
+  provider: ^6.1.2
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+  flutter_test:
+    sdk: flutter
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: false

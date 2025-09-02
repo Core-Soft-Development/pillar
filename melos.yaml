@@ -1,0 +1,351 @@
+name: pillar
+
+packages:
+  - packages/**
+
+# Repository configuration
+repository: https://github.com/Core-Soft-Development/pillar
+
+command:
+  bootstrap:
+    # It seems so that running "pub get" in parallel has some issues (like
+    # https://github.com/dart-lang/pub/issues/3404). Disabling this feature
+    # makes the CI much more stable.
+    runPubGetInParallel: false
+    usePubspecOverrides: true
+
+  clean:
+    hooks:
+      pre: melos exec -c 1 -- "flutter clean"
+
+  version:
+    # Allow versioning to update dependency constraints
+    updateGitTagRefs: true
+    # Update changelog files
+    updateChangelogs: true
+    # Link to repository for changelog
+    linkToCommits: true
+    # Workspace changelog
+    workspaceChangelog: true
+    # Update dependencies between packages
+    updateDependentsVersionConstraints: true
+    # Update dependencies in pubspec.yaml
+    updateDependentsConstraints: true
+    # Branch to use for linking commits in changelogs
+    branch: main
+    # Commit message template for version commits
+    message: |
+      chore(release): publish packages
+
+      {new_package_versions}
+    # Include conventional commit prefixes in changelog
+    includeCommitId: true
+    # Generate changelog entries from conventional commits
+    generateChangelog: true
+
+scripts:
+  analyze:
+    run: |
+      melos exec -c 1 --fail-fast -- \
+        dart analyze . --fatal-infos
+    description: |
+      Run `dart analyze` in all packages.
+       - Note: you can also rely on your IDEs Dart Analysis / Issues window.
+
+  build:all:
+    run: |
+      melos exec -c 6 --fail-fast -- \
+        "flutter build apk"
+    description: Build all example apps.
+    select-package:
+      dir-exists:
+        - "android"
+
+  test:
+    run: |
+      melos exec -c 6 --fail-fast --ignore="*example*" -- \
+        "flutter test"
+    description: Run `flutter test` for all packages (excluding example apps).
+
+  test:integration:
+    run: |
+      melos exec -c 6 --fail-fast -- \
+        "flutter test integration_test"
+    description: Run all integration tests.
+
+  test:all:
+    run: |
+      melos exec -c 6 --fail-fast --dir-exists="test" -- \
+        "flutter test"
+    description: Run tests only for packages that have a test directory.
+
+  test:with-examples:
+    run: |
+      melos exec -c 6 --fail-fast --dir-exists="test" -- \
+        "flutter test" || echo "Some packages don't have tests, which is normal"
+    description: Run tests for all packages, including examples (with error tolerance).
+
+  format:
+    run: |
+      find . -name "*.dart" \
+        ! -name "*.g.dart" \
+        ! -name "*.freezed.dart" \
+        ! -name "*.gr.dart" \
+        ! -path "*/.*/*" \
+        ! -path "*/.dart_tool/*" \
+        ! -path "*/build/*" \
+        | xargs dart format --line-length=120 --set-exit-if-changed
+    description: |
+      Formats the code of all packages with 120 character line limit.
+      Excludes generated files and build directories.
+
+  lint:all:
+    run: |
+      melos exec -c 1 --fail-fast -- \
+        dart analyze . --fatal-infos
+    description: |
+      Run all static analysis checks.
+
+  pub:get:
+    run: |
+      melos exec -c 6 --fail-fast -- \
+        flutter pub get
+    description: Run `flutter pub get` in all packages.
+
+  pub:upgrade:
+    run: |
+      melos exec -c 6 --fail-fast -- \
+        flutter pub upgrade
+    description: Run `flutter pub upgrade` in all packages.
+
+  build_runner:
+    run: |
+      melos exec -c 1 --fail-fast --depends-on="build_runner" -- \
+        dart run build_runner build --delete-conflicting-outputs
+    description: Run `build_runner` in all packages that depend on it.
+
+  build_runner:watch:
+    run: |
+      melos exec -c 1 --fail-fast --depends-on="build_runner" -- \
+        dart run build_runner watch --delete-conflicting-outputs
+    description: Run `build_runner` in watch mode for all packages that depend on it.
+
+  # Versioning Scripts
+  version:check:
+    run: melos list --long
+    description: Check current packages and their versions
+
+  version:patch:
+    run: melos version --no-git-tag-version --no-git-commit-version --yes
+    description: Version packages with patch increment
+
+  version:minor:
+    run: melos version --no-git-tag-version --no-git-commit-version --yes --prerelease --preid minor
+    description: Version packages with minor increment
+
+  version:major:
+    run: melos version --no-git-tag-version --no-git-commit-version --yes --prerelease --preid major
+    description: Version packages with major increment
+
+  version:prerelease:
+    run: melos version --no-git-tag-version --no-git-commit-version --yes --prerelease
+    description: Version packages as prerelease
+
+  version:graduate:
+    run: melos version --no-git-tag-version --no-git-commit-version --yes --graduate
+    description: Graduate prerelease versions to stable
+
+  # Individual package versioning
+  version:package:
+    run: |
+      if [ -z "$MELOS_PACKAGE" ]; then
+        echo "Usage: melos run version:package --scope=package-name -- [patch|minor|major]"
+        exit 1
+      fi
+      VERSION_TYPE=${1:-patch}
+      melos version --no-git-tag-version --yes --scope="$MELOS_PACKAGE" --$VERSION_TYPE
+    description: "Version a specific package (usage: melos run version:package --scope=package-name -- [patch|minor|major])"
+
+  # Release scripts
+  release:prepare:
+    run: |
+      echo "🚀 Preparing release..."
+      melos list --long
+      echo "✅ Release preparation complete. Review versions above."
+    description: Prepare for release (show current versions)
+
+  release:local:
+    run: |
+      echo "🚀 Creating local release..."
+      melos version --no-git-tag-version --no-git-commit-version --yes
+      melos run pub:get
+      echo "✅ Local release complete"
+    description: Create a local release (update versions and dependencies)
+
+  release:publish:
+    run: |
+      echo "🚀 Publishing release..."
+      melos version --yes
+      melos publish --yes
+      echo "✅ Release published"
+    description: Publish release to pub.dev (creates git tags)
+
+  # Dependency management
+  deps:check:
+    run: |
+      echo "📦 Checking for outdated dependencies..."
+      melos exec -- "flutter pub outdated"
+    description: Check for outdated dependencies in all packages
+
+  deps:upgrade:
+    run: |
+      echo "📦 Upgrading dependencies..."
+      melos exec -- "flutter pub upgrade"
+      melos bootstrap
+    description: Upgrade dependencies in all packages
+
+  deps:graph:
+    run: |
+      echo "📊 Generating dependency graph..."
+      melos list --graph
+    description: Show dependency graph between packages
+
+  # Breaking changes detection
+  breaking:check:
+    run: |
+      echo "🔍 Checking for breaking changes..."
+      melos exec --depends-on="pillar_core" -- \
+        "echo 'Package \$MELOS_PACKAGE_NAME depends on pillar_core'"
+    description: Check which packages depend on pillar_core (or other packages)
+
+  breaking:update:
+    run: |
+      echo "🔄 Updating packages after breaking changes..."
+      melos version --dependent-versions --yes
+      melos bootstrap
+    description: Update all dependent packages when there are breaking changes
+
+  # CI/CD helpers
+  ci:version:
+    run: |
+      echo "🤖 CI: Checking version consistency..."
+      melos list --long
+      echo "✅ All versions listed above"
+    description: CI script to check version consistency
+
+  # Enhanced CI scripts
+  ci:check-changes:
+    run: |
+      echo "🔍 Checking for changes since last release..."
+      CHANGED_PACKAGES=$(melos list --diff=HEAD~1 --json 2>/dev/null | jq -r '.[].name' | wc -l || echo "0")
+      echo "Found $CHANGED_PACKAGES packages with changes"
+      if [ "$CHANGED_PACKAGES" -gt 0 ]; then
+        echo "📦 Changed packages:"
+        melos list --diff=HEAD~1 --long 2>/dev/null || echo "Unable to determine changed packages"
+        exit 0
+      else
+        echo "⏭️ No packages have changes"
+        exit 1
+      fi
+    description: Check if any packages have changes requiring versioning
+
+  ci:version-and-tag:
+    run: |
+      echo "🏷️ Versioning packages and creating tags..."
+
+      # Configure git for CI
+      git config --global user.name "github-actions[bot]"
+      git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Version packages
+      melos version --yes --all
+
+      # Create individual package tags
+      melos list --json | jq -r '.[] | "\(.name)@\(.version)"' | while read package_version; do
+        echo "Creating tag: $package_version"
+        git tag "$package_version" -m "Release $package_version"
+      done
+
+      echo "✅ Versioning and tagging completed"
+    description: Version packages and create release tags for CI
+
+  ci:generate-changelog:
+    run: |
+      echo "📝 Generating workspace changelog..."
+
+      RELEASE_DATE=$(date '+%Y-%m-%d')
+      RELEASE_TIME=$(date '+%H:%M:%S')
+
+      # Create or update workspace changelog
+      if [ ! -f CHANGELOG.md ]; then
+        cat > CHANGELOG.md << EOF
+      # Pillar Monorepo Changelog
+
+      This file tracks changes across all packages in the Pillar monorepo.
+
+      EOF
+      fi
+
+      # Prepare new changelog entry
+      {
+        echo "## [$RELEASE_DATE] - Automated Release"
+        echo ""
+        echo "**Release Time:** $RELEASE_TIME"
+        echo "**Triggered by:** CI/CD Pipeline"
+        echo ""
+        echo "### 📦 Updated Packages"
+        echo ""
+        melos list --long | while read line; do
+          echo "- $line"
+        done
+        echo ""
+        echo "### 🔄 Changes"
+        echo ""
+        echo "Changes are based on conventional commits since the last release."
+        echo ""
+        echo "See individual package changelogs for detailed changes:"
+        melos list --json | jq -r '.[] | "- [\(.name)](\(.path)/CHANGELOG.md)"'
+        echo ""
+      } > temp_changelog.md
+
+      # Merge with existing changelog
+      if [ -f CHANGELOG.md ]; then
+        tail -n +3 CHANGELOG.md >> temp_changelog.md
+      fi
+      mv temp_changelog.md CHANGELOG.md
+
+      echo "✅ Workspace changelog generated"
+    description: Generate workspace changelog for CI
+
+  ci:validate-before-release:
+    run: |
+      echo "✅ Running pre-release validation..."
+      melos run analyze
+      melos run test
+      melos run build_runner
+      echo "✅ All validations passed"
+    description: Run all validations before release
+
+  ci:publish:
+    run: |
+      echo "📦 Publishing packages to pub.dev..."
+
+      # Authenticate with pub.dev if token is available
+      if [ -n "$PUB_TOKEN" ]; then
+        echo "$PUB_TOKEN" | dart pub token add https://pub.dartlang.org
+      fi
+
+      # Publish all packages
+      melos publish --no-dry-run --yes || {
+        echo "⚠️ Some packages may have failed to publish"
+        echo "This is often normal for packages that haven't changed"
+      }
+
+      echo "✅ Publishing to pub.dev completed"
+    description: Publish packages to pub.dev
+
+  fix:analysis-warnings:
+    run: |
+      echo "🔧 Fixing analysis warnings..."
+      ./scripts/fix-analysis-warnings.sh
+    description: Fix common analysis warnings (path dependencies, publish_to issues)

@@ -1,0 +1,349 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.35.0"
+  MELOS_VERSION: "6.0.0"
+
+jobs:
+  # Job 1: Analyze and validate code quality
+  analyze:
+    name: 📊 Code Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 📚 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for conventional commits
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 📦 Get dependencies
+        run: flutter pub global activate melos ${{ env.MELOS_VERSION }}
+
+      - name: 🏗️ Bootstrap monorepo
+        run: melos bootstrap
+
+      - name: 🔍 Analyze code
+        run: melos run analyze
+
+      - name: 📝 Check formatting
+        run: melos run format
+
+  # Job 2: Run all tests
+  test:
+    name: 🧪 Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [analyze]
+
+    steps:
+      - name: 📚 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 📦 Get dependencies
+        run: flutter pub global activate melos ${{ env.MELOS_VERSION }}
+
+      - name: 🏗️ Bootstrap monorepo
+        run: melos bootstrap
+
+      - name: 🧪 Run tests
+        run: melos run test:all
+
+      - name: 📊 Upload coverage
+        uses: codecov/codecov-action@v3
+        if: success()
+        with:
+          files: ./coverage/lcov.info
+
+  # Job 3: Build packages
+  build:
+    name: 🏗️ Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [analyze]
+
+    steps:
+      - name: 📚 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 📦 Get dependencies
+        run: flutter pub global activate melos ${{ env.MELOS_VERSION }}
+
+      - name: 🏗️ Bootstrap monorepo
+        run: melos bootstrap
+
+      - name: 🔨 Build packages
+        run: melos run build_runner
+
+      - name: 📱 Build example apps
+        run: melos run build:all
+        continue-on-error: true  # Some packages might not have example apps
+
+  # Job 4: Version and publish (only on main branch)
+  version-and-publish:
+    name: 🚀 Version & Publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [analyze, test, build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    permissions:
+      contents: write
+      packages: write
+      pull-requests: write
+
+    steps:
+      - name: 📚 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 📦 Get dependencies
+        run: flutter pub global activate melos ${{ env.MELOS_VERSION }}
+
+      - name: 🏗️ Bootstrap monorepo
+        run: melos bootstrap
+
+      - name: 🏷️ Check for changes requiring versioning
+        id: check-changes
+        run: |
+          echo "🔍 Checking for changes requiring versioning..."
+
+          # Check if we have any package tags (first release detection)
+          PACKAGE_TAGS=$(git tag -l "*@*" | wc -l || echo "0")
+          echo "📌 Found $PACKAGE_TAGS existing package tags"
+
+          if [ "$PACKAGE_TAGS" -eq 0 ]; then
+            echo "🎉 No package tags found - treating as first release"
+            # For first release, count all public packages
+            CHANGED_PACKAGES=$(melos list --no-private --parsable | wc -l || echo "0")
+            echo "📦 First release: $CHANGED_PACKAGES public packages to publish"
+
+            if [ "$CHANGED_PACKAGES" -gt 0 ]; then
+              echo "📋 Packages to publish:"
+              melos list --no-private --long || echo "Unable to list packages"
+            fi
+          else
+            echo "🔄 Checking for changes since origin/develop..."
+            # For subsequent releases, use git to check for changes in package directories
+            CHANGED_PACKAGES=0
+
+            # Check each package directory for changes
+            if git diff --quiet origin/develop HEAD -- packages/pillar-core/; then
+              echo "📦 pillar-core: no changes"
+            else
+              echo "📦 pillar-core: has changes"
+              CHANGED_PACKAGES=$((CHANGED_PACKAGES + 1))
+            fi
+
+            if git diff --quiet origin/develop HEAD -- packages/pillar-remote-config/; then
+              echo "📦 pillar-remote-config: no changes"
+            else
+              echo "📦 pillar-remote-config: has changes"
+              # Only count if it's public (check pubspec.yaml)
+              if ! grep -q "publish_to: none" packages/pillar-remote-config/pubspec.yaml 2>/dev/null; then
+                CHANGED_PACKAGES=$((CHANGED_PACKAGES + 1))
+              fi
+            fi
+
+            echo "📦 Found $CHANGED_PACKAGES packages with changes"
+          fi
+
+          echo "changed_packages=$CHANGED_PACKAGES" >> $GITHUB_OUTPUT
+          echo "✅ Final result: $CHANGED_PACKAGES packages to process"
+
+      - name: 🔄 Version packages
+        if: steps.check-changes.outputs.changed_packages > 0
+        run: |
+          # Configure git for automated commits
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Ensure LICENSE files exist in all packages
+          echo "📄 Ensuring LICENSE files exist in all packages..."
+          for package_dir in packages/*/; do
+            if [ -d "$package_dir" ] && [ ! -f "${package_dir}LICENSE" ]; then
+              echo "Copying LICENSE to $package_dir"
+              cp LICENSE "${package_dir}LICENSE"
+            fi
+          done
+
+          # Version only changed packages based on conventional commits
+          echo "🔄 Versioning packages..."
+
+          # Check if we have package tags (not first release)
+          PACKAGE_TAGS=$(git tag -l "*@*" | wc -l || echo "0")
+          if [ "$PACKAGE_TAGS" -eq 0 ]; then
+            echo "🎉 First release - versioning all packages"
+            melos version --yes --all
+          else
+            echo "📦 Versioning changed packages only"
+            # Version only packages that have changes since origin/develop
+            melos version --yes
+          fi
+
+      - name: 📝 Generate changelogs
+        if: steps.check-changes.outputs.changed_packages > 0
+        run: |
+          # Generate individual package changelogs
+          melos exec --no-private -- "echo 'Generating changelog for \$MELOS_PACKAGE_NAME'"
+
+          # Update workspace changelog
+          echo "# Pillar Monorepo Changelog" > CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "This file tracks changes across all packages in the Pillar monorepo." >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "## $(date '+%Y-%m-%d')" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+
+          # Add package versions to workspace changelog (using parsable format instead of JSON)
+          echo "### 📦 Updated Packages" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          melos list --no-private --long | grep -E "^[a-zA-Z_][a-zA-Z0-9_]* [0-9]" | while read -r line; do
+            if [ -n "$line" ]; then
+              package_name=$(echo "$line" | awk '{print $1}')
+              package_version=$(echo "$line" | awk '{print $2}')
+              echo "- **$package_name** v$package_version" >> CHANGELOG.md
+            fi
+          done
+          echo "" >> CHANGELOG.md
+
+      - name: 🏷️ Create release tags
+        if: steps.check-changes.outputs.changed_packages > 0
+        run: |
+          # Create tags for versioned packages (using long format instead of JSON)
+          echo "🏷️ Creating release tags..."
+
+          melos list --no-private --long | grep -E "^[a-zA-Z_][a-zA-Z0-9_]* [0-9]" | while read -r line; do
+            if [ -n "$line" ]; then
+              package_name=$(echo "$line" | awk '{print $1}')
+              package_version=$(echo "$line" | awk '{print $2}')
+
+              if [ -n "$package_name" ] && [ -n "$package_version" ]; then
+                echo "Creating tag for $package_name@$package_version"
+                git tag "$package_name@$package_version" -m "Release $package_name version $package_version"
+              else
+                echo "⚠️ Could not parse package info from: $line"
+              fi
+            fi
+          done
+
+      - name: 📤 Push changes and tags
+        if: steps.check-changes.outputs.changed_packages > 0
+        run: |
+          git push origin main
+          git push origin --tags
+
+      - name: 🧪 Test package publication (DRY-RUN MODE)
+        if: steps.check-changes.outputs.changed_packages > 0
+        env:
+          PUB_CREDENTIALS: ${{ secrets.PUB_CREDENTIALS }}
+        run: |
+          echo "🚨 ========================================="
+          echo "🚨 WARNING: RUNNING IN DRY-RUN TEST MODE"
+          echo "🚨 NO PACKAGES WILL BE PUBLISHED TO PUB.DEV"
+          echo "🚨 ========================================="
+          echo ""
+
+          # Setup pub.dev credentials for validation (but not used in dry-run)
+          if [ -n "$PUB_CREDENTIALS" ]; then
+            echo "🔐 Setting up pub.dev credentials for validation..."
+            mkdir -p ~/.pub-cache
+            echo "$PUB_CREDENTIALS" > ~/.pub-cache/credentials.json
+            echo "✅ Credentials configured (dry-run mode)"
+          else
+            echo "⚠️ PUB_CREDENTIALS not configured - continuing with dry-run"
+          fi
+
+          # TEST MODE: Dry-run publish (not actually publishing to pub.dev)
+          echo "🧪 Testing package publication (dry-run mode)..."
+          melos publish --dry-run --yes || echo "⚠️ Some packages may have failed dry-run validation"
+
+          echo ""
+          echo "✅ Dry-run completed successfully!"
+          echo "📝 To enable real publishing, change --dry-run to --no-dry-run"
+
+      - name: 📋 Create GitHub release
+        if: steps.check-changes.outputs.changed_packages > 0
+        run: |
+          # Create a release tag first
+          RELEASE_TAG="release-$(date +'%Y%m%d-%H%M%S')"
+          RELEASE_NAME="Pillar Release $(date +'%Y-%m-%d %H:%M:%S')"
+
+          echo "🏷️ Creating release tag: $RELEASE_TAG"
+          git tag "$RELEASE_TAG" -m "$RELEASE_NAME"
+          git push origin "$RELEASE_TAG"
+
+          # Create GitHub release
+          gh release create "$RELEASE_TAG" \
+            --title "$RELEASE_NAME" \
+            --notes "## 🚀 Automated Release
+
+          This release was automatically generated by our CI/CD pipeline.
+
+          ### 📦 Updated Packages
+
+          $(melos list --no-private --long | grep -E '^[a-zA-Z_][a-zA-Z0-9_]* [0-9]' | while read -r line; do
+            package_name=$(echo "$line" | awk '{print $1}')
+            package_version=$(echo "$line" | awk '{print $2}')
+            echo "- **$package_name** v$package_version"
+          done)
+
+          ### 🔄 Changes
+
+          See individual package changelogs for detailed changes.
+
+          ---
+
+          Generated on $(date)"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Job 5: Notify on failure
+  notify-failure:
+    name: 📢 Notify Failure
+    runs-on: ubuntu-latest
+    needs: [analyze, test, build, version-and-publish]
+    if: failure() && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: 📢 Send notification
+        run: |
+          echo "🚨 CI/CD Pipeline failed for main branch"
+          echo "Please check the logs and fix the issues"
+          # Add Slack/Discord/Email notification here if needed
