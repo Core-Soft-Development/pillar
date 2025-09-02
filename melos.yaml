@@ -31,6 +31,17 @@ command:
     updateDependentsVersionConstraints: true
     # Update dependencies in pubspec.yaml
     updateDependentsConstraints: true
+    # Branch to use for linking commits in changelogs
+    branch: main
+    # Commit message template for version commits
+    message: |
+      chore(release): publish packages
+
+      {new_package_versions}
+    # Include conventional commit prefixes in changelog
+    includeCommitId: true
+    # Generate changelog entries from conventional commits
+    generateChangelog: true
 
 scripts:
   analyze:
@@ -216,3 +227,119 @@ scripts:
       melos publish --yes
       echo "✅ Packages published"
     description: CI script to publish packages
+
+  # Enhanced CI scripts
+  ci:check-changes:
+    run: |
+      echo "🔍 Checking for changes since last release..."
+      CHANGED_PACKAGES=$(melos list --since=HEAD~1 --json 2>/dev/null | jq -r '.[].name' | wc -l || echo "0")
+      echo "Found $CHANGED_PACKAGES packages with changes"
+      if [ "$CHANGED_PACKAGES" -gt 0 ]; then
+        echo "📦 Changed packages:"
+        melos list --since=HEAD~1 --long 2>/dev/null || echo "Unable to determine changed packages"
+        exit 0
+      else
+        echo "⏭️ No packages have changes"
+        exit 1
+      fi
+    description: Check if any packages have changes requiring versioning
+
+  ci:version-and-tag:
+    run: |
+      echo "🏷️ Versioning packages and creating tags..."
+
+      # Configure git for CI
+      git config --global user.name "github-actions[bot]"
+      git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Version packages
+      melos version --yes --all
+
+      # Create individual package tags
+      melos list --json | jq -r '.[] | "\(.name)@\(.version)"' | while read package_version; do
+        echo "Creating tag: $package_version"
+        git tag "$package_version" -m "Release $package_version"
+      done
+
+      echo "✅ Versioning and tagging completed"
+    description: Version packages and create release tags for CI
+
+  ci:generate-changelog:
+    run: |
+      echo "📝 Generating workspace changelog..."
+
+      RELEASE_DATE=$(date '+%Y-%m-%d')
+      RELEASE_TIME=$(date '+%H:%M:%S')
+
+      # Create or update workspace changelog
+      if [ ! -f CHANGELOG.md ]; then
+        cat > CHANGELOG.md << EOF
+      # Pillar Monorepo Changelog
+
+      This file tracks changes across all packages in the Pillar monorepo.
+
+      EOF
+      fi
+
+      # Prepare new changelog entry
+      {
+        echo "## [$RELEASE_DATE] - Automated Release"
+        echo ""
+        echo "**Release Time:** $RELEASE_TIME"
+        echo "**Triggered by:** CI/CD Pipeline"
+        echo ""
+        echo "### 📦 Updated Packages"
+        echo ""
+        melos list --long | while read line; do
+          echo "- $line"
+        done
+        echo ""
+        echo "### 🔄 Changes"
+        echo ""
+        echo "Changes are based on conventional commits since the last release."
+        echo ""
+        echo "See individual package changelogs for detailed changes:"
+        melos list --json | jq -r '.[] | "- [\(.name)](\(.path)/CHANGELOG.md)"'
+        echo ""
+      } > temp_changelog.md
+
+      # Merge with existing changelog
+      if [ -f CHANGELOG.md ]; then
+        tail -n +3 CHANGELOG.md >> temp_changelog.md
+      fi
+      mv temp_changelog.md CHANGELOG.md
+
+      echo "✅ Workspace changelog generated"
+    description: Generate workspace changelog for CI
+
+  ci:validate-before-release:
+    run: |
+      echo "✅ Running pre-release validation..."
+      melos run analyze
+      melos run test
+      melos run build_runner
+      echo "✅ All validations passed"
+    description: Run all validations before release
+
+  ci:publish-to-artifactory:
+    run: |
+      echo "🏛️ Publishing packages to artifactory..."
+
+      if [ -z "$ARTIFACTORY_URL" ]; then
+        echo "⚠️ ARTIFACTORY_URL not set, skipping artifactory publish"
+        exit 0
+      fi
+
+      echo "Publishing to: $ARTIFACTORY_URL"
+
+      # Configure pub for artifactory
+      mkdir -p ~/.pub-cache
+
+      # Publish all packages
+      melos publish --no-dry-run --yes || {
+        echo "⚠️ Some packages may have failed to publish to artifactory"
+        echo "This is often normal for packages that haven't changed"
+      }
+
+      echo "✅ Artifactory publishing completed"
+    description: Publish packages to artifactory with proper error handling

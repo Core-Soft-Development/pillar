@@ -5,12 +5,14 @@ This directory contains comprehensive documentation for the Pillar monorepo.
 ## 📚 Available Documentation
 
 - **[VERSIONING.md](VERSIONING.md)** - Complete guide for package versioning and release management
+- **[CI-CD.md](CI-CD.md)** - CI/CD pipeline documentation and automated release process
 
 ## Structure
 
 ```
 docs/
 ├── VERSIONING.md      # Package versioning and release management guide
+├── CI-CD.md          # CI/CD pipeline and automated release documentation
 ├── architecture/      # Architecture guides and patterns
 ├── getting-started/   # Setup and initial development guides
 ├── packages/         # Package-specific documentation
