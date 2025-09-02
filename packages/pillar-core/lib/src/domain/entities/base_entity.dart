@@ -4,6 +4,7 @@ import 'package:meta/meta.dart';
 /// Entities are objects that have identity and are mutable
 @immutable
 abstract class BaseEntity<T> {
+  /// Constructs a [BaseEntity] with a unique identifier.
   const BaseEntity();
 
   /// Unique identifier for the entity

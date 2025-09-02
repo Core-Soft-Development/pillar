@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pillar_core/pillar_core.dart';
 import 'package:pillar_core_example/providers/example_provider.dart';
@@ -34,7 +35,9 @@ void setupDependencies() {
   );
 }
 
+/// The root widget of the application.
 class MyApp extends StatelessWidget {
+  /// Creates the root widget of the application.
   const MyApp({super.key});
 
   @override
@@ -52,13 +55,22 @@ class MyApp extends StatelessWidget {
   }
 }
 
+/// The home page of the application.
 class MyHomePage extends StatefulWidget {
+  /// Creates the home page of the application.
   const MyHomePage({super.key, required this.title});
 
+  /// The title of the home page.
   final String title;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('title', title));
+  }
 }
 
 class _MyHomePageState extends State<MyHomePage> with DependencyInjectionMixin {

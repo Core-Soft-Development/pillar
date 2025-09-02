@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 /// Base class for all presentation providers
 /// Providers manage UI state and handle user interactions
 abstract class BaseProvider extends ChangeNotifier {
+  /// Constructs a [BaseProvider].
   BaseProvider() : _isDisposed = false;
 
   bool _isDisposed;

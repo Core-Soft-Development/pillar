@@ -3,10 +3,12 @@ import 'package:pillar_remote_config/src/remote_config_repository.dart';
 
 /// Provider for remote configuration management
 class RemoteConfigProvider extends BaseProvider {
+  /// Constructor for RemoteConfigProvider
   RemoteConfigProvider({
     required this.repository,
   });
 
+  /// Repository for remote configuration operations
   final RemoteConfigRepository repository;
   Map<String, dynamic> _configs = {};
 

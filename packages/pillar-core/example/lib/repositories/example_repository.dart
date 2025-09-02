@@ -1,9 +1,12 @@
 import 'package:pillar_core/pillar_core.dart';
 
+/// ExampleRepository demonstrating a simple repository pattern
 abstract interface class ExampleRepository implements BaseRepository {
+  /// Repository name
   Future<String> getData();
 }
 
+/// Implementation of ExampleRepository
 class ExampleRepositoryImpl implements ExampleRepository {
   @override
   String get repositoryName => 'ExampleRepository';

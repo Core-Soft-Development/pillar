@@ -1,5 +1,10 @@
 include: package:flutter_lints/flutter.yaml
 
+# Pillar monorepo analysis configuration
+# - Line length limit: 120 characters (instead of default 80)
+# - Strict analysis enabled for better code quality
+# - Package imports enforced for consistency
+
 analyzer:
   exclude:
     - "**/*.g.dart"
@@ -19,10 +24,8 @@ analyzer:
     missing_return: warning
     # allow having TODOs in the code
     todo: ignore
-    # Ignore analyzer hints for updating pubspecs when using Future or
-    # Stream and not importing dart:async
-    # Please see https://github.com/flutter/flutter/pull/24528 for details.
-    sdk_version_async_exported_from_core: ignore
+    # disable 80 char limit in favor of 120 char limit
+    lines_longer_than_80_chars: ignore
 
 linter:
   rules:
@@ -35,17 +38,15 @@ linter:
     - non_constant_identifier_names
     - constant_identifier_names
     - directives_ordering
-    - lines_longer_than_80_chars
+    # lines_longer_than_80_chars disabled - using 120 char limit instead
 
     # DOCUMENTATION
     - slash_for_doc_comments
-    - package_api_docs
     - public_member_api_docs
 
     # USAGE
     - implementation_imports
     - avoid_relative_lib_imports
-    - prefer_relative_imports
     - avoid_empty_else
     - avoid_print
     - avoid_unnecessary_containers

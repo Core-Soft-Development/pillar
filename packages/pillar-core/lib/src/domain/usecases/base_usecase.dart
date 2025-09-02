@@ -28,10 +28,12 @@ abstract interface class SyncNoParamsUseCase<TResult> {
 /// Parameters wrapper for use cases
 @immutable
 abstract class UseCaseParams {
+  /// Constructs a [UseCaseParams].
   const UseCaseParams();
 }
 
 /// Empty parameters for use cases that don't need parameters
 class NoParams extends UseCaseParams {
+  /// Constructs a [NoParams].
   const NoParams();
 }

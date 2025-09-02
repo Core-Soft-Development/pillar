@@ -1,7 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
-import 'package:provider/provider.dart';
 import 'package:pillar_core/src/core/dependency_injection/dependency_container.dart';
 import 'package:pillar_core/src/core/dependency_injection/provider_dependency_container.dart';
+import 'package:provider/provider.dart';
 
 /// Provider wrapper for dependency injection container
 class DependencyInjectionProvider extends StatelessWidget {
@@ -13,8 +14,13 @@ class DependencyInjectionProvider extends StatelessWidget {
     this.setup,
   });
 
+  /// The child widget that will have access to the dependency container
   final Widget child;
+
+  /// Optional custom dependency container. If not provided, the default singleton instance will be used.
   final DependencyContainer? container;
+
+  /// Optional setup function to register dependencies in the container
   final void Function(DependencyContainer container)? setup;
 
   @override
@@ -27,6 +33,18 @@ class DependencyInjectionProvider extends StatelessWidget {
     return Provider<DependencyContainer>.value(
       value: dependencyContainer,
       child: child,
+    );
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<DependencyContainer?>('container', container));
+    properties.add(
+      ObjectFlagProperty<void Function(DependencyContainer container)?>.has(
+        'setup',
+        setup,
+      ),
     );
   }
 }
@@ -65,6 +83,7 @@ class DependencyConsumer<T extends Object> extends StatelessWidget {
     required this.builder,
   });
 
+  /// The builder function that receives the dependency and builds the widget
   final Widget Function(BuildContext context, T dependency, Widget? child) builder;
 
   @override
@@ -74,6 +93,19 @@ class DependencyConsumer<T extends Object> extends StatelessWidget {
         final dependency = container.get<T>();
         return builder(context, dependency, child);
       },
+    );
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(
+      ObjectFlagProperty<
+          Widget Function(
+            BuildContext context,
+            T dependency,
+            Widget? child,
+          )>.has('builder', builder),
     );
   }
 }
@@ -88,8 +120,13 @@ class DependencySelector<T extends Object, R> extends StatelessWidget {
     this.shouldRebuild,
   });
 
+  /// The selector function that selects a specific property from the dependency
   final R Function(T dependency) selector;
+
+  /// The builder function that receives the selected property and builds the widget
   final Widget Function(BuildContext context, R value, Widget? child) builder;
+
+  /// Optional function to determine if the widget should rebuild based on changes in the selected property
   final bool Function(R previous, R next)? shouldRebuild;
 
   @override
@@ -100,6 +137,26 @@ class DependencySelector<T extends Object, R> extends StatelessWidget {
         final selectedValue = selector(dependency);
         return builder(context, selectedValue, child);
       },
+    );
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(
+      ObjectFlagProperty<R Function(T dependency)>.has('selector', selector),
+    );
+    properties.add(
+      ObjectFlagProperty<Widget Function(BuildContext context, R value, Widget? child)>.has(
+        'builder',
+        builder,
+      ),
+    );
+    properties.add(
+      ObjectFlagProperty<bool Function(R previous, R next)?>.has(
+        'shouldRebuild',
+        shouldRebuild,
+      ),
     );
   }
 }

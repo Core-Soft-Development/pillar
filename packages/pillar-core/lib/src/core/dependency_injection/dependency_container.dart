@@ -30,8 +30,10 @@ abstract interface class DependencyContainer {
 
 /// Exception thrown when dependency is not found
 class DependencyNotFoundException implements Exception {
+  /// Creates a new instance of [DependencyNotFoundException]
   const DependencyNotFoundException(this.type);
 
+  /// The type that was not found
   final Type type;
 
   @override
@@ -40,8 +42,10 @@ class DependencyNotFoundException implements Exception {
 
 /// Exception thrown when trying to register already registered dependency
 class DependencyAlreadyRegisteredException implements Exception {
+  /// Creates a new instance of [DependencyAlreadyRegisteredException]
   const DependencyAlreadyRegisteredException(this.type);
 
+  /// The type that is already registered
   final Type type;
 
   @override
@@ -63,16 +67,23 @@ enum DependencyLifecycle {
 /// Registration information for a dependency
 @immutable
 class DependencyRegistration<T extends Object> {
+  /// Creates a new instance of [DependencyRegistration]
   const DependencyRegistration({
     required this.factory,
     required this.lifecycle,
     this.instance,
   });
 
+  /// Factory function to create instance of [T]
   final T Function() factory;
+
+  /// Lifecycle of the dependency
   final DependencyLifecycle lifecycle;
+
+  /// Instance of the dependency if already created
   final T? instance;
 
+  /// Creates a copy of this registration with optional new values
   DependencyRegistration<T> copyWith({
     T Function()? factory,
     DependencyLifecycle? lifecycle,

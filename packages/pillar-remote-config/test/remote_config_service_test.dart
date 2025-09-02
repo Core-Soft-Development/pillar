@@ -15,13 +15,19 @@ void main() {
 
     test('should return default values when not configured', () {
       expect(service.getString('test_key'), equals(''));
-      expect(service.getString('test_key', defaultValue: 'default'), equals('default'));
+      expect(
+        service.getString('test_key', defaultValue: 'default'),
+        equals('default'),
+      );
       expect(service.getBool('test_bool'), equals(false));
       expect(service.getBool('test_bool', defaultValue: true), equals(true));
       expect(service.getInt('test_int'), equals(0));
       expect(service.getInt('test_int', defaultValue: 42), equals(42));
       expect(service.getDouble('test_double'), equals(0.0));
-      expect(service.getDouble('test_double', defaultValue: 3.14), equals(3.14));
+      expect(
+        service.getDouble('test_double', defaultValue: 3.14),
+        equals(3.14),
+      );
     });
 
     test('should return false for hasKey when not configured', () {

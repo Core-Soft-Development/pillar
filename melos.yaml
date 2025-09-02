@@ -82,10 +82,10 @@ scripts:
         ! -path "*/.*/*" \
         ! -path "*/.dart_tool/*" \
         ! -path "*/build/*" \
-        | xargs dart format --set-exit-if-changed
+        | xargs dart format --line-length=120 --set-exit-if-changed
     description: |
-      Formats the code of all packages (Java, Objective-C, and Dart).
-       - Requires `flutter_plugin_tools` (`pub global activate flutter_plugin_tools`).
+      Formats the code of all packages with 120 character line limit.
+      Excludes generated files and build directories.
 
   lint:all:
     run: |
