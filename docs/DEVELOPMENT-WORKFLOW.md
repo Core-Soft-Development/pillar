@@ -75,7 +75,7 @@ graph LR
     D --> E[Merge to main]
     E --> F[🏷️ Auto Versioning]
     F --> G[📝 Changelogs]
-    G --> H[🏛️ Artifactory]
+    G --> H[📦 pub.dev]
     H --> I[🚀 GitHub Release]
 ```
 
@@ -84,7 +84,7 @@ graph LR
 2. 🔮 **Version preview** in PR comments
 3. 🏷️ **Automatic versioning** based on conventional commits
 4. 📝 **Changelog generation** from commits since last release
-5. 🏛️ **Publication to artifactory**
+5. 📦 **Publication to pub.dev**
 6. 🚀 **GitHub release creation**
 
 ## 🎯 Key Points
@@ -157,7 +157,7 @@ git push origin release/v1.2.0
 # 2. Determines version bumps based on conventional commits
 # 3. Updates package versions
 # 4. Generates changelogs
-# 5. Publishes to artifactory
+# 5. Publishes to pub.dev
 # 6. Creates GitHub release
 ```
 
@@ -269,7 +269,7 @@ After a release to main, check:
 
 - ✅ **GitHub Actions** - All jobs completed successfully
 - ✅ **GitHub Releases** - New release created with changelog
-- ✅ **Artifactory** - Packages published successfully
+- ✅ **pub.dev** - Packages published successfully
 - ✅ **Git Tags** - Individual package tags created
 - ✅ **Changelogs** - Updated with new entries
 

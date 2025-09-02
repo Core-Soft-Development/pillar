@@ -233,13 +233,6 @@ scripts:
       echo "✅ All versions listed above"
     description: CI script to check version consistency
 
-  ci:publish:
-    run: |
-      echo "🤖 CI: Publishing packages..."
-      melos publish --yes
-      echo "✅ Packages published"
-    description: CI script to publish packages
-
   # Enhanced CI scripts
   ci:check-changes:
     run: |
@@ -333,25 +326,26 @@ scripts:
       echo "✅ All validations passed"
     description: Run all validations before release
 
-  ci:publish-to-artifactory:
+  ci:publish:
     run: |
-      echo "🏛️ Publishing packages to artifactory..."
+      echo "📦 Publishing packages to pub.dev..."
 
-      if [ -z "$ARTIFACTORY_URL" ]; then
-        echo "⚠️ ARTIFACTORY_URL not set, skipping artifactory publish"
-        exit 0
+      # Authenticate with pub.dev if token is available
+      if [ -n "$PUB_TOKEN" ]; then
+        echo "$PUB_TOKEN" | dart pub token add https://pub.dartlang.org
       fi
-
-      echo "Publishing to: $ARTIFACTORY_URL"
-
-      # Configure pub for artifactory
-      mkdir -p ~/.pub-cache
 
       # Publish all packages
       melos publish --no-dry-run --yes || {
-        echo "⚠️ Some packages may have failed to publish to artifactory"
+        echo "⚠️ Some packages may have failed to publish"
         echo "This is often normal for packages that haven't changed"
       }
 
-      echo "✅ Artifactory publishing completed"
-    description: Publish packages to artifactory with proper error handling
+      echo "✅ Publishing to pub.dev completed"
+    description: Publish packages to pub.dev
+
+  fix:analysis-warnings:
+    run: |
+      echo "🔧 Fixing analysis warnings..."
+      ./scripts/fix-analysis-warnings.sh
+    description: Fix common analysis warnings (path dependencies, publish_to issues)

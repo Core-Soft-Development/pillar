@@ -167,33 +167,25 @@ jobs:
           git add CHANGELOG.md
           git commit -m "docs: update changelog for ${{ github.event.inputs.release_type }} release" || echo "No changelog changes to commit"
 
-      - name: 📦 Publish to artifactory
+      - name: 📦 Publish to pub.dev
         if: github.event.inputs.dry_run == 'false'
         env:
-          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
-          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
-          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+          PUB_CREDENTIALS: ${{ secrets.PUB_CREDENTIALS }}
         run: |
-          if [ ! -z "$ARTIFACTORY_URL" ]; then
-            echo "🏛️ Publishing to artifactory: $ARTIFACTORY_URL"
-
-            # Setup artifactory credentials
+          # Setup pub.dev credentials for auto-refresh
+          if [ -n "$PUB_CREDENTIALS" ]; then
+            echo "🔐 Setting up pub.dev credentials with auto-refresh..."
             mkdir -p ~/.pub-cache
-            cat > ~/.pub-cache/credentials.json << EOF
-          {
-            "accessToken": null,
-            "refreshToken": null,
-            "tokenEndpoint": null,
-            "scopes": null,
-            "expiration": null
-          }
-          EOF
-
-            # Publish packages
-            melos publish --no-dry-run --yes
+            echo "$PUB_CREDENTIALS" > ~/.pub-cache/credentials.json
+            echo "✅ Credentials configured with refresh token"
           else
-            echo "⚠️ Artifactory not configured, skipping publish"
+            echo "⚠️ PUB_CREDENTIALS not configured, skipping publish"
+            exit 1
           fi
+
+          # Publish packages (dart pub will auto-refresh token if needed)
+          echo "📦 Publishing packages to pub.dev..."
+          melos publish --no-dry-run --yes
 
       - name: 📋 Create release summary
         if: github.event.inputs.dry_run == 'false'
