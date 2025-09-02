@@ -4,6 +4,7 @@ This directory contains comprehensive documentation for the Pillar monorepo.
 
 ## 📚 Available Documentation
 
+- **[DEVELOPMENT-WORKFLOW.md](DEVELOPMENT-WORKFLOW.md)** - Complete development workflow (Git Flow + CI/CD)
 - **[VERSIONING.md](VERSIONING.md)** - Complete guide for package versioning and release management
 - **[CI-CD.md](CI-CD.md)** - CI/CD pipeline documentation and automated release process
 
@@ -11,6 +12,7 @@ This directory contains comprehensive documentation for the Pillar monorepo.
 
 ```
 docs/
+├── DEVELOPMENT-WORKFLOW.md # Complete development workflow guide
 ├── VERSIONING.md      # Package versioning and release management guide
 ├── CI-CD.md          # CI/CD pipeline and automated release documentation
 ├── architecture/      # Architecture guides and patterns
