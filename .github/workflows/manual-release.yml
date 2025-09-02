@@ -170,18 +170,20 @@ jobs:
       - name: 📦 Publish to pub.dev
         if: github.event.inputs.dry_run == 'false'
         env:
-          PUB_TOKEN: ${{ secrets.PUB_TOKEN }}
+          PUB_CREDENTIALS: ${{ secrets.PUB_CREDENTIALS }}
         run: |
-          # Authenticate with pub.dev
-          if [ -n "$PUB_TOKEN" ]; then
-            echo "$PUB_TOKEN" | dart pub token add https://pub.dartlang.org
-            echo "✅ Authenticated with pub.dev"
+          # Setup pub.dev credentials for auto-refresh
+          if [ -n "$PUB_CREDENTIALS" ]; then
+            echo "🔐 Setting up pub.dev credentials with auto-refresh..."
+            mkdir -p ~/.pub-cache
+            echo "$PUB_CREDENTIALS" > ~/.pub-cache/credentials.json
+            echo "✅ Credentials configured with refresh token"
           else
-            echo "⚠️ PUB_TOKEN not configured, skipping publish"
+            echo "⚠️ PUB_CREDENTIALS not configured, skipping publish"
             exit 1
           fi
-          
-          # Publish packages
+
+          # Publish packages (dart pub will auto-refresh token if needed)
           echo "📦 Publishing packages to pub.dev..."
           melos publish --no-dry-run --yes
 

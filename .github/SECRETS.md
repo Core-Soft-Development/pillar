@@ -7,7 +7,7 @@ This document describes the required secrets for the CI/CD pipeline.
 Configure these secrets in your GitHub repository settings (`Settings > Secrets and variables > Actions`):
 
 ### pub.dev Configuration
-- **`PUB_TOKEN`** - Authentication token for pub.dev publishing
+- **`PUB_CREDENTIALS`** - Complete credentials JSON file for pub.dev publishing (includes refresh token for auto-renewal)
 
 ### Optional Notification Secrets
 - **`SLACK_WEBHOOK_URL`** - Webhook URL for Slack notifications (optional)
@@ -26,15 +26,16 @@ Configure these secrets in your GitHub repository settings (`Settings > Secrets 
    cat ~/.pub-cache/credentials.json
    ```
 
-2. **Extract token:**
-   - Copy the `accessToken` value from the credentials.json file
-   - This is your `PUB_TOKEN` value
+2. **Copy complete credentials:**
+   - Copy the ENTIRE JSON content from the credentials.json file
+   - Include the `refreshToken` for automatic token renewal
+   - This is your `PUB_CREDENTIALS` value
 
 3. **Add to GitHub:**
    - Go to repository Settings > Secrets and variables > Actions
    - Click "New repository secret"
-   - Name: `PUB_TOKEN`
-   - Value: Your access token from step 2
+   - Name: `PUB_CREDENTIALS`
+   - Value: The complete JSON from step 2
 
 ### 2. Notification Setup (Optional)
 
@@ -73,7 +74,7 @@ melos publish --dry-run
 ```
 Error: 401 Unauthorized when accessing https://pub.dartlang.org
 ```
-**Solution:** Check that `PUB_TOKEN` is correct and hasn't expired.
+**Solution:** Check that `PUB_CREDENTIALS` contains valid JSON with both accessToken and refreshToken.
 
 #### Token Expired
 ```

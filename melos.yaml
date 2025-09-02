@@ -233,13 +233,6 @@ scripts:
       echo "✅ All versions listed above"
     description: CI script to check version consistency
 
-  ci:publish:
-    run: |
-      echo "🤖 CI: Publishing packages..."
-      melos publish --yes
-      echo "✅ Packages published"
-    description: CI script to publish packages
-
   # Enhanced CI scripts
   ci:check-changes:
     run: |
