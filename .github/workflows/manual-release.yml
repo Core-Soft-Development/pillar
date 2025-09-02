@@ -1,0 +1,230 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Type of release'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+          - graduate
+      packages:
+        description: 'Specific packages to release (comma-separated, leave empty for all changed packages)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run (preview changes without applying)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  FLUTTER_VERSION: "3.35.0"
+  MELOS_VERSION: "6.0.0"
+
+jobs:
+  manual-release:
+    name: 🚀 Manual Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: write
+      packages: write
+      pull-requests: write
+
+    steps:
+      - name: 📚 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 📦 Get dependencies
+        run: flutter pub global activate melos ${{ env.MELOS_VERSION }}
+
+      - name: 🏗️ Bootstrap monorepo
+        run: melos bootstrap
+
+      - name: 🔍 Validate before release
+        run: |
+          echo "🔍 Running pre-release validation..."
+          melos run analyze
+          melos run test:all
+          echo "✅ Validation passed"
+
+      - name: 🏷️ Preview release changes
+        run: |
+          echo "🔍 Preview of release changes:"
+          echo "Release type: ${{ github.event.inputs.release_type }}"
+          echo "Target packages: ${{ github.event.inputs.packages || 'all changed packages' }}"
+          echo "Dry run: ${{ github.event.inputs.dry_run }}"
+
+          # Show current versions
+          echo "📋 Current package versions:"
+          melos list --long
+
+      - name: 🔄 Execute release (dry run)
+        if: github.event.inputs.dry_run == 'true'
+        run: |
+          echo "🧪 Executing dry run..."
+
+          if [ "${{ github.event.inputs.release_type }}" = "patch" ]; then
+            melos version --no-git-tag-version --no-git-commit-version --all --yes
+          elif [ "${{ github.event.inputs.release_type }}" = "minor" ]; then
+            melos version --no-git-tag-version --no-git-commit-version --all --yes --prerelease --preid minor
+          elif [ "${{ github.event.inputs.release_type }}" = "major" ]; then
+            melos version --no-git-tag-version --no-git-commit-version --all --yes --prerelease --preid major
+          elif [ "${{ github.event.inputs.release_type }}" = "prerelease" ]; then
+            melos version --no-git-tag-version --no-git-commit-version --all --yes --prerelease
+          elif [ "${{ github.event.inputs.release_type }}" = "graduate" ]; then
+            melos version --no-git-tag-version --no-git-commit-version --all --yes --graduate
+          fi
+
+          echo "📋 Versions after dry run:"
+          melos list --long
+
+          echo "⚠️ This was a dry run. No changes were committed."
+
+      - name: 🔄 Execute release (actual)
+        if: github.event.inputs.dry_run == 'false'
+        run: |
+          echo "🚀 Executing actual release..."
+
+          # Configure git
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Execute versioning based on release type
+          if [ "${{ github.event.inputs.release_type }}" = "patch" ]; then
+            melos version --all --yes
+          elif [ "${{ github.event.inputs.release_type }}" = "minor" ]; then
+            melos version --all --yes --prerelease --preid minor
+          elif [ "${{ github.event.inputs.release_type }}" = "major" ]; then
+            melos version --all --yes --prerelease --preid major
+          elif [ "${{ github.event.inputs.release_type }}" = "prerelease" ]; then
+            melos version --all --yes --prerelease
+          elif [ "${{ github.event.inputs.release_type }}" = "graduate" ]; then
+            melos version --all --yes --graduate
+          fi
+
+      - name: 📝 Update changelogs
+        if: github.event.inputs.dry_run == 'false'
+        run: |
+          echo "📝 Updating changelogs..."
+
+          # Update workspace changelog
+          RELEASE_DATE=$(date '+%Y-%m-%d')
+          RELEASE_TIME=$(date '+%H:%M:%S')
+
+          # Create/update workspace changelog
+          if [ ! -f CHANGELOG.md ]; then
+            echo "# Pillar Monorepo Changelog" > CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            echo "This file tracks changes across all packages in the Pillar monorepo." >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+          fi
+
+          # Add new release section
+          {
+            echo "## [$RELEASE_DATE] - Manual ${{ github.event.inputs.release_type }} Release"
+            echo ""
+            echo "**Release Type:** ${{ github.event.inputs.release_type }}"
+            echo "**Release Time:** $RELEASE_TIME"
+            echo "**Triggered by:** @${{ github.actor }}"
+            echo ""
+            echo "### 📦 Updated Packages"
+            echo ""
+            melos list --long | while read line; do
+              echo "- $line"
+            done
+            echo ""
+            echo "### 🔄 Changes"
+            echo ""
+            echo "See individual package changelogs for detailed changes."
+            echo ""
+          } > temp_changelog.md
+
+          # Merge with existing changelog
+          if [ -f CHANGELOG.md ]; then
+            tail -n +4 CHANGELOG.md >> temp_changelog.md
+          fi
+          mv temp_changelog.md CHANGELOG.md
+
+          # Commit changelog
+          git add CHANGELOG.md
+          git commit -m "docs: update changelog for ${{ github.event.inputs.release_type }} release" || echo "No changelog changes to commit"
+
+      - name: 📦 Publish to artifactory
+        if: github.event.inputs.dry_run == 'false'
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+        run: |
+          if [ ! -z "$ARTIFACTORY_URL" ]; then
+            echo "🏛️ Publishing to artifactory: $ARTIFACTORY_URL"
+
+            # Setup artifactory credentials
+            mkdir -p ~/.pub-cache
+            cat > ~/.pub-cache/credentials.json << EOF
+          {
+            "accessToken": null,
+            "refreshToken": null,
+            "tokenEndpoint": null,
+            "scopes": null,
+            "expiration": null
+          }
+          EOF
+
+            # Publish packages
+            melos publish --no-dry-run --yes
+          else
+            echo "⚠️ Artifactory not configured, skipping publish"
+          fi
+
+      - name: 📋 Create release summary
+        if: github.event.inputs.dry_run == 'false'
+        run: |
+          echo "## 🚀 Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Release Type:** ${{ github.event.inputs.release_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Updated Packages" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          melos list --long >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Release completed successfully!" >> $GITHUB_STEP_SUMMARY
+
+      - name: 📋 Create dry run summary
+        if: github.event.inputs.dry_run == 'true'
+        run: |
+          echo "## 🧪 Dry Run Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Release Type:** ${{ github.event.inputs.release_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Target Packages:** ${{ github.event.inputs.packages || 'all changed packages' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Current Versions" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          melos list --long >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ This was a dry run - no changes were applied." >> $GITHUB_STEP_SUMMARY

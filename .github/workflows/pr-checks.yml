@@ -1,0 +1,311 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.35.0"
+  MELOS_VERSION: "6.0.0"
+
+jobs:
+  # Skip if PR is in draft
+  check-pr-status:
+    name: 🔍 Check PR Status
+    runs-on: ubuntu-latest
+    outputs:
+      should-skip: ${{ steps.skip-check.outputs.should-skip }}
+    steps:
+      - name: 🔍 Skip draft PRs
+        id: skip-check
+        run: |
+          if [ "${{ github.event.pull_request.draft }}" = "true" ]; then
+            echo "should-skip=true" >> $GITHUB_OUTPUT
+            echo "⏭️ Skipping checks for draft PR"
+          else
+            echo "should-skip=false" >> $GITHUB_OUTPUT
+            echo "✅ PR is ready for review, running checks"
+          fi
+
+  # Validate PR title follows conventional commits
+  validate-pr-title:
+    name: 📝 Validate PR Title
+    runs-on: ubuntu-latest
+    needs: [check-pr-status]
+    if: needs.check-pr-status.outputs.should-skip != 'true'
+
+    steps:
+      - name: 📝 Check PR title format
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+          requireScope: false
+          disallowScopes: |
+            release
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            The subject "{subject}" found in the pull request title "{title}"
+            didn't match the configured pattern. Please ensure that the subject
+            doesn't start with an uppercase character.
+
+  # Analyze changed packages
+  analyze-changes:
+    name: 📊 Analyze Changes
+    runs-on: ubuntu-latest
+    needs: [check-pr-status]
+    if: needs.check-pr-status.outputs.should-skip != 'true'
+    outputs:
+      changed-packages: ${{ steps.changes.outputs.changed-packages }}
+      has-breaking-changes: ${{ steps.changes.outputs.has-breaking-changes }}
+
+    steps:
+      - name: 📚 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 📦 Get dependencies
+        run: flutter pub global activate melos ${{ env.MELOS_VERSION }}
+
+      - name: 🏗️ Bootstrap monorepo
+        run: melos bootstrap
+
+      - name: 🔍 Analyze changes
+        id: changes
+        run: |
+          echo "🔍 Analyzing changed packages..."
+
+          # Get base branch
+          BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+          echo "Base branch: $BASE_BRANCH"
+
+          # Get changed packages
+          CHANGED_PACKAGES=$(melos list --since=origin/$BASE_BRANCH --json 2>/dev/null | jq -r '.[].name' | tr '\n' ',' | sed 's/,$//' || echo "")
+          echo "Changed packages: $CHANGED_PACKAGES"
+          echo "changed-packages=$CHANGED_PACKAGES" >> $GITHUB_OUTPUT
+
+          # Check for breaking changes in PR title or commits
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          HAS_BREAKING_CHANGES="false"
+
+          if echo "$PR_TITLE" | grep -q "!"; then
+            HAS_BREAKING_CHANGES="true"
+            echo "⚠️ Breaking changes detected in PR title"
+          fi
+
+          # Check recent commits for breaking changes
+          if git log origin/$BASE_BRANCH..HEAD --oneline | grep -q "!"; then
+            HAS_BREAKING_CHANGES="true"
+            echo "⚠️ Breaking changes detected in commits"
+          fi
+
+          echo "has-breaking-changes=$HAS_BREAKING_CHANGES" >> $GITHUB_OUTPUT
+
+          # Create summary
+          echo "## 📊 Change Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Changed Packages:** ${CHANGED_PACKAGES:-None}" >> $GITHUB_STEP_SUMMARY
+          echo "**Breaking Changes:** $HAS_BREAKING_CHANGES" >> $GITHUB_STEP_SUMMARY
+          echo "**Base Branch:** $BASE_BRANCH" >> $GITHUB_STEP_SUMMARY
+
+  # Run quality checks
+  quality-checks:
+    name: 🔍 Quality Checks
+    runs-on: ubuntu-latest
+    needs: [check-pr-status, analyze-changes]
+    if: needs.check-pr-status.outputs.should-skip != 'true'
+
+    steps:
+      - name: 📚 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 📦 Get dependencies
+        run: flutter pub global activate melos ${{ env.MELOS_VERSION }}
+
+      - name: 🏗️ Bootstrap monorepo
+        run: melos bootstrap
+
+      - name: 🔍 Analyze code
+        run: melos run analyze
+
+      - name: 📝 Check formatting
+        run: melos run format
+
+      - name: 🧪 Run tests
+        run: melos run test:all
+
+      - name: 🏗️ Build packages
+        run: melos run build_runner
+
+  # Preview version changes
+  preview-versions:
+    name: 🔮 Preview Versions
+    runs-on: ubuntu-latest
+    needs: [check-pr-status, analyze-changes]
+    if: needs.check-pr-status.outputs.should-skip != 'true' && needs.analyze-changes.outputs.changed-packages != ''
+
+    steps:
+      - name: 📚 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 📦 Get dependencies
+        run: flutter pub global activate melos ${{ env.MELOS_VERSION }}
+
+      - name: 🏗️ Bootstrap monorepo
+        run: melos bootstrap
+
+      - name: 🔮 Preview version changes
+        run: |
+          echo "🔮 Previewing version changes..."
+
+          echo "📋 Current versions:"
+          melos list --long
+
+          echo ""
+          echo "🔄 Simulating version changes (dry run)..."
+
+          # Simulate versioning based on conventional commits
+          if [ "${{ needs.analyze-changes.outputs.has-breaking-changes }}" = "true" ]; then
+            echo "⚠️ Breaking changes detected - would trigger MAJOR version bump"
+            melos version --no-git-tag-version --no-git-commit-version --all --yes --prerelease --preid major 2>/dev/null || echo "Simulation completed"
+          else
+            echo "✅ No breaking changes - would trigger MINOR/PATCH version bump"
+            melos version --no-git-tag-version --no-git-commit-version --all --yes 2>/dev/null || echo "Simulation completed"
+          fi
+
+          echo ""
+          echo "📋 Projected versions after merge:"
+          melos list --long
+
+          # Create comment body for PR
+          {
+            echo "## 🔮 Version Preview"
+            echo ""
+            echo "This PR will affect the following packages:"
+            echo ""
+            echo "**Changed Packages:** ${{ needs.analyze-changes.outputs.changed-packages }}"
+            echo "**Breaking Changes:** ${{ needs.analyze-changes.outputs.has-breaking-changes }}"
+            echo ""
+            echo "### 📋 Current Versions"
+            echo '```'
+            melos list --long
+            echo '```'
+            echo ""
+            if [ "${{ needs.analyze-changes.outputs.has-breaking-changes }}" = "true" ]; then
+              echo "⚠️ **Breaking Changes Detected**"
+              echo ""
+              echo "This PR contains breaking changes and will trigger a **MAJOR** version bump when merged to main."
+              echo ""
+              echo "Please ensure:"
+              echo "- [ ] Breaking changes are documented"
+              echo "- [ ] Migration guide is provided (if needed)"
+              echo "- [ ] Dependent packages are updated"
+            else
+              echo "✅ **No Breaking Changes**"
+              echo ""
+              echo "This PR will trigger a **MINOR** or **PATCH** version bump when merged to main."
+            fi
+            echo ""
+            echo "---"
+            echo "*This preview is automatically generated and may not reflect the exact final versions.*"
+          } > pr_comment.md
+
+      - name: 💬 Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const comment = fs.readFileSync('pr_comment.md', 'utf8');
+
+            // Find existing bot comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.login === 'github-actions[bot]' &&
+              comment.body.includes('🔮 Version Preview')
+            );
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
+
+  # Check if PR is ready to merge
+  ready-to-merge:
+    name: ✅ Ready to Merge
+    runs-on: ubuntu-latest
+    needs: [validate-pr-title, analyze-changes, quality-checks, preview-versions]
+    if: always() && needs.check-pr-status.outputs.should-skip != 'true'
+
+    steps:
+      - name: ✅ All checks passed
+        if: needs.validate-pr-title.result == 'success' && needs.quality-checks.result == 'success'
+        run: |
+          echo "✅ All checks passed! PR is ready to merge."
+          echo ""
+          echo "When this PR is merged to main:"
+          echo "- Packages will be automatically versioned"
+          echo "- Changelogs will be updated"
+          echo "- Packages will be published to artifactory"
+          echo "- GitHub releases will be created"
+
+      - name: ❌ Checks failed
+        if: needs.validate-pr-title.result != 'success' || needs.quality-checks.result != 'success'
+        run: |
+          echo "❌ Some checks failed. Please fix the issues before merging."
+          exit 1

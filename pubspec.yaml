@@ -1,0 +1,19 @@
+name: pillar
+description: A Flutter monorepo for building scalable applications
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.35.0"
+
+# Workspace is managed by melos.yaml
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+  flutter_test:
+    sdk: flutter
+  melos: ^6.0.0
+
+flutter:
+  uses-material-design: true
