@@ -143,9 +143,65 @@ jobs:
         id: check-changes
         run: |
           # Check if there are any changes that require versioning
-          CHANGED_PACKAGES=$(melos list --since=HEAD~1 --json | jq -r '.[].name' | wc -l)
+          echo "🔍 Checking for changes requiring versioning..."
+
+          # Try different strategies to detect changes
+          CHANGED_PACKAGES=0
+
+          # Strategy 1: Check against last tag (for normal releases)
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            echo "📌 Last tag found: $LAST_TAG"
+            CHANGED_PACKAGES=$(melos list --since="$LAST_TAG" --json 2>/dev/null | jq -r '.[].name' | wc -l || echo "0")
+            echo "📦 Found $CHANGED_PACKAGES packages with changes since $LAST_TAG"
+          fi
+
+          # Strategy 2: If no changes found or no tags, check against develop branch merge base
+          if [ "$CHANGED_PACKAGES" -eq 0 ]; then
+            echo "🔄 No changes found with tags, trying merge-base with develop..."
+            MERGE_BASE=$(git merge-base HEAD origin/develop 2>/dev/null || echo "")
+            if [ -n "$MERGE_BASE" ] && [ "$MERGE_BASE" != "$(git rev-parse HEAD)" ]; then
+              echo "🔗 Merge base with develop: $MERGE_BASE"
+              CHANGED_PACKAGES=$(melos list --since="$MERGE_BASE" --json 2>/dev/null | jq -r '.[].name' | wc -l || echo "0")
+              echo "📦 Found $CHANGED_PACKAGES packages with changes since merge base"
+            fi
+          fi
+
+          # Strategy 3: If still no changes, check if this is first release (no previous packages published)
+          if [ "$CHANGED_PACKAGES" -eq 0 ]; then
+            echo "🆕 Checking if this is a first release..."
+            # Count all packages (for first release, we want to publish everything)
+            ALL_PACKAGES=$(melos list --json 2>/dev/null | jq -r '.[].name' | wc -l || echo "0")
+
+            # Check if any packages exist - if yes, this might be first release
+            if [ "$ALL_PACKAGES" -gt 0 ]; then
+              echo "📦 Found $ALL_PACKAGES total packages"
+              # Check if we have any git tags at all
+              TAG_COUNT=$(git tag -l | wc -l || echo "0")
+              if [ "$TAG_COUNT" -eq 0 ]; then
+                echo "🎉 No previous tags found - treating as first release"
+                CHANGED_PACKAGES=$ALL_PACKAGES
+              else
+                echo "🔍 Tags exist but no changes detected - checking HEAD~1 as fallback"
+                CHANGED_PACKAGES=$(melos list --since=HEAD~1 --json 2>/dev/null | jq -r '.[].name' | wc -l || echo "0")
+              fi
+            fi
+          fi
+
           echo "changed_packages=$CHANGED_PACKAGES" >> $GITHUB_OUTPUT
-          echo "📦 Found $CHANGED_PACKAGES packages with changes"
+          echo "✅ Final result: $CHANGED_PACKAGES packages with changes"
+
+          # Debug: List the changed packages if any
+          if [ "$CHANGED_PACKAGES" -gt 0 ]; then
+            echo "📋 Changed packages:"
+            if [ -n "$LAST_TAG" ]; then
+              melos list --since="$LAST_TAG" --long 2>/dev/null || echo "Unable to list changed packages"
+            elif [ -n "$MERGE_BASE" ] && [ "$MERGE_BASE" != "$(git rev-parse HEAD)" ]; then
+              melos list --since="$MERGE_BASE" --long 2>/dev/null || echo "Unable to list changed packages"
+            else
+              melos list --long 2>/dev/null || echo "Unable to list packages"
+            fi
+          fi
 
       - name: 🔄 Version packages
         if: steps.check-changes.outputs.changed_packages > 0
