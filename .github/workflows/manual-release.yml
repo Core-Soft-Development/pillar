@@ -167,33 +167,23 @@ jobs:
           git add CHANGELOG.md
           git commit -m "docs: update changelog for ${{ github.event.inputs.release_type }} release" || echo "No changelog changes to commit"
 
-      - name: 📦 Publish to artifactory
+      - name: 📦 Publish to pub.dev
         if: github.event.inputs.dry_run == 'false'
         env:
-          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
-          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
-          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+          PUB_TOKEN: ${{ secrets.PUB_TOKEN }}
         run: |
-          if [ ! -z "$ARTIFACTORY_URL" ]; then
-            echo "🏛️ Publishing to artifactory: $ARTIFACTORY_URL"
-
-            # Setup artifactory credentials
-            mkdir -p ~/.pub-cache
-            cat > ~/.pub-cache/credentials.json << EOF
-          {
-            "accessToken": null,
-            "refreshToken": null,
-            "tokenEndpoint": null,
-            "scopes": null,
-            "expiration": null
-          }
-          EOF
-
-            # Publish packages
-            melos publish --no-dry-run --yes
+          # Authenticate with pub.dev
+          if [ -n "$PUB_TOKEN" ]; then
+            echo "$PUB_TOKEN" | dart pub token add https://pub.dartlang.org
+            echo "✅ Authenticated with pub.dev"
           else
-            echo "⚠️ Artifactory not configured, skipping publish"
+            echo "⚠️ PUB_TOKEN not configured, skipping publish"
+            exit 1
           fi
+          
+          # Publish packages
+          echo "📦 Publishing packages to pub.dev..."
+          melos publish --no-dry-run --yes
 
       - name: 📋 Create release summary
         if: github.event.inputs.dry_run == 'false'

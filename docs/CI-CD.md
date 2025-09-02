@@ -17,7 +17,7 @@ The Pillar monorepo uses GitHub Actions for CI/CD with the following key feature
 
 - **Automated Quality Checks**: Linting, formatting, and testing on every PR
 - **Conventional Commits**: Automatic versioning based on commit messages
-- **Automated Publishing**: Packages are published to artifactory after successful builds
+- **Automated Publishing**: Packages are published to pub.dev after successful builds
 - **Changelog Generation**: Automatic changelog updates for packages and workspace
 - **Branch Protection**: Only CI can update versions and create releases
 
@@ -58,7 +58,7 @@ This PR contains breaking changes and will trigger a MAJOR version bump.
 
 **Flow**:
 ```
-Push to main → Quality Checks → Version Packages → Update Changelogs → Publish to Artifactory → Create GitHub Release
+Push to main → Quality Checks → Version Packages → Update Changelogs → Publish to pub.dev → Create GitHub Release
 ```
 
 ### 3. Manual Release (`manual-release.yml`)
@@ -104,7 +104,7 @@ The system uses conventional commits to determine version bumps:
 5. `pillar_core` bumped to 2.0.0
 6. `pillar_remote_config` (depends on pillar_core) bumped to 2.0.0
 7. Changelogs updated with breaking change details
-8. Packages published to artifactory
+8. Packages published to pub.dev
 9. GitHub release created
 
 ## 🚀 Release Process
@@ -148,9 +148,7 @@ git commit -m "fix: resolve critical security vulnerability"
 Set these in GitHub repository settings:
 
 ```
-ARTIFACTORY_URL=https://your-company.jfrog.io/artifactory/api/pub/dart
-ARTIFACTORY_USERNAME=your-username
-ARTIFACTORY_PASSWORD=your-password
+PUB_TOKEN=your-pub-dev-token
 ```
 
 ### Melos Configuration
@@ -211,11 +209,11 @@ Set up notifications for:
 **Problem**: Package version didn't change after merge
 **Solution**: Check if commit follows conventional commit format
 
-#### Artifactory Publish Failed
+#### pub.dev Publish Failed
 **Problem**: Package failed to publish
 **Solution**: 
-1. Check artifactory credentials
-2. Verify package doesn't already exist
+1. Check pub.dev credentials (PUB_TOKEN)
+2. Verify package doesn't already exist or you have publish permissions
 3. Check network connectivity
 
 #### Dependency Conflicts
@@ -256,7 +254,7 @@ Check these logs when debugging:
 ### Secrets Management
 - Use repository secrets, never hardcode credentials
 - Rotate secrets regularly
-- Use least-privilege access for artifactory
+- Use tokens with minimal required permissions for pub.dev
 
 ### Branch Protection
 - Protect main branch from direct pushes

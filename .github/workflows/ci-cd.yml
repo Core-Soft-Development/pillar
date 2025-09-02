@@ -194,34 +194,23 @@ jobs:
           git push origin main
           git push origin --tags
 
-      - name: 📦 Publish to artifactory
+      - name: 📦 Publish to pub.dev
         if: steps.check-changes.outputs.changed_packages > 0
         env:
-          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
-          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
-          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+          PUB_TOKEN: ${{ secrets.PUB_TOKEN }}
         run: |
-          # Configure pub for artifactory
-          if [ ! -z "$ARTIFACTORY_URL" ]; then
-            echo "🏛️ Publishing to artifactory: $ARTIFACTORY_URL"
-
-            # Setup artifactory credentials
-            mkdir -p ~/.pub-cache
-            cat > ~/.pub-cache/credentials.json << EOF
-          {
-            "accessToken": null,
-            "refreshToken": null,
-            "tokenEndpoint": null,
-            "scopes": null,
-            "expiration": null
-          }
-          EOF
-
-            # Publish packages to artifactory
-            melos publish --no-dry-run --yes || echo "⚠️ Some packages may have failed to publish"
+          # Authenticate with pub.dev
+          if [ -n "$PUB_TOKEN" ]; then
+            echo "$PUB_TOKEN" | dart pub token add https://pub.dartlang.org
+            echo "✅ Authenticated with pub.dev"
           else
-            echo "⚠️ Artifactory not configured, skipping publish"
+            echo "⚠️ PUB_TOKEN not configured, skipping publish"
+            exit 1
           fi
+          
+          # Publish packages
+          echo "📦 Publishing packages to pub.dev..."
+          melos publish --no-dry-run --yes || echo "⚠️ Some packages may have failed to publish"
 
       - name: 📋 Create GitHub release
         if: steps.check-changes.outputs.changed_packages > 0

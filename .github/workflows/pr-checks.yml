@@ -301,7 +301,7 @@ jobs:
           echo "When this PR is merged to main:"
           echo "- Packages will be automatically versioned"
           echo "- Changelogs will be updated"
-          echo "- Packages will be published to artifactory"
+          echo "- Packages will be published to pub.dev"
           echo "- GitHub releases will be created"
 
       - name: ❌ Checks failed

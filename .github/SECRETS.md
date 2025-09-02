@@ -1,106 +1,109 @@
 # GitHub Secrets Configuration
 
-This document lists all the secrets and environment variables required for the CI/CD pipelines.
+This document describes the required secrets for the CI/CD pipeline.
 
 ## Required Secrets
 
-### Repository Secrets
-
 Configure these secrets in your GitHub repository settings (`Settings > Secrets and variables > Actions`):
 
-#### Artifactory Configuration
-- **`ARTIFACTORY_URL`** - URL of your artifactory instance (e.g., `https://your-company.jfrog.io/artifactory/api/pub/dart`)
-- **`ARTIFACTORY_USERNAME`** - Username for artifactory authentication
-- **`ARTIFACTORY_PASSWORD`** - Password or API key for artifactory authentication
+### pub.dev Configuration
+- **`PUB_TOKEN`** - Authentication token for pub.dev publishing
 
-#### Optional Notification Secrets
-- **`SLACK_WEBHOOK_URL`** - Slack webhook for release notifications (optional)
-- **`DISCORD_WEBHOOK_URL`** - Discord webhook for release notifications (optional)
-
-### Environment Variables
-
-These are automatically available in GitHub Actions:
-
-- **`GITHUB_TOKEN`** - Automatically provided by GitHub Actions
-- **`GITHUB_ACTOR`** - Username of the person who triggered the workflow
-- **`GITHUB_REF`** - Branch or tag ref that triggered the workflow
+### Optional Notification Secrets
+- **`SLACK_WEBHOOK_URL`** - Webhook URL for Slack notifications (optional)
+- **`DISCORD_WEBHOOK_URL`** - Webhook URL for Discord notifications (optional)
 
 ## Setting Up Secrets
 
-### 1. Artifactory Setup
+### 1. pub.dev Setup
 
+1. **Generate pub.dev token:**
+   ```bash
+   # Login to pub.dev locally first
+   dart pub login
+   
+   # Get your credentials file
+   cat ~/.pub-cache/credentials.json
+   ```
+
+2. **Extract token:**
+   - Copy the `accessToken` value from the credentials.json file
+   - This is your `PUB_TOKEN` value
+
+3. **Add to GitHub:**
+   - Go to repository Settings > Secrets and variables > Actions
+   - Click "New repository secret"
+   - Name: `PUB_TOKEN`
+   - Value: Your access token from step 2
+
+### 2. Notification Setup (Optional)
+
+#### Slack
 ```bash
-# Example artifactory URL formats:
-# JFrog Cloud: https://your-company.jfrog.io/artifactory/api/pub/dart
-# Self-hosted: https://artifactory.your-company.com/artifactory/api/pub/dart
+# Create a Slack webhook in your workspace
+# Add the webhook URL as SLACK_WEBHOOK_URL secret
 ```
 
-### 2. GitHub Repository Settings
-
-1. Go to your repository on GitHub
-2. Click on `Settings` tab
-3. Navigate to `Secrets and variables > Actions`
-4. Click `New repository secret`
-5. Add each secret with the exact name listed above
-
-### 3. Testing Secrets
-
-You can test if secrets are properly configured by running the manual release workflow with dry-run enabled.
+#### Discord
+```bash
+# Create a Discord webhook in your server
+# Add the webhook URL as DISCORD_WEBHOOK_URL secret
+```
 
 ## Security Best Practices
 
-### Secret Management
-- Use API keys instead of passwords when possible
-- Rotate secrets regularly
-- Use least-privilege access for artifactory users
+- Use tokens with minimal required permissions
+- Rotate tokens regularly
 - Never log secret values in workflows
+- Use environment-specific secrets when possible
 
-### Access Control
-- Limit repository access to trusted contributors
-- Use branch protection rules for main/develop branches
-- Require PR reviews for sensitive changes
+## Verification
 
-### Monitoring
-- Monitor artifactory access logs
-- Set up alerts for failed releases
-- Review workflow logs regularly
+Test your setup:
+```bash
+# Dry run to test authentication
+melos publish --dry-run
+```
 
 ## Troubleshooting
 
 ### Common Issues
 
-#### Artifactory Authentication Failed
+#### pub.dev Authentication Failed
 ```
-Error: 401 Unauthorized
+Error: 401 Unauthorized when accessing https://pub.dartlang.org
 ```
-**Solution:** Check `ARTIFACTORY_USERNAME` and `ARTIFACTORY_PASSWORD` are correct.
+**Solution:** Check that `PUB_TOKEN` is correct and hasn't expired.
 
-#### Artifactory URL Not Found
+#### Token Expired
 ```
-Error: Could not resolve host
+Error: Token has expired
 ```
-**Solution:** Verify `ARTIFACTORY_URL` is correct and accessible.
+**Solution:** Generate a new token using `dart pub login` and update the secret.
 
 #### Missing Permissions
 ```
-Error: Resource not accessible by integration
+Error: Insufficient permissions to publish package
 ```
-**Solution:** Ensure the repository has proper permissions and the `GITHUB_TOKEN` has write access.
+**Solution:** Ensure you have publisher permissions for the package on pub.dev.
 
-### Debug Mode
+## Token Management
 
-To enable debug logging in workflows, add this secret:
-- **`ACTIONS_RUNNER_DEBUG`** = `true`
+### Rotating Tokens
+1. Generate new token: `dart pub login`
+2. Update GitHub secret with new token
+3. Test with dry-run: `melos publish --dry-run`
 
-## Workflow Permissions
+### Monitoring
+- Monitor pub.dev package dashboard
+- Set up alerts for failed releases
+- Review workflow logs regularly
 
-The workflows require these permissions:
+## Package Publishing Process
 
-```yaml
-permissions:
-  contents: write      # For creating commits and tags
-  packages: write      # For publishing packages
-  pull-requests: write # For commenting on PRs
-```
+1. **Authentication**: GitHub Actions uses `PUB_TOKEN` to authenticate
+2. **Validation**: Packages are validated before publishing
+3. **Publishing**: Only changed packages are published
+4. **Verification**: Success/failure is reported in workflow logs
 
-These are automatically configured in the workflow files.
+For more details, see the main [CI/CD documentation](../docs/CI-CD.md).
