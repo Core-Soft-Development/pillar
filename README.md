@@ -69,15 +69,42 @@ pillar/
 └── analysis_options.yaml # Dart analysis configuration
 ```
 
-## Packages
+## 📦 Packages
 
 This monorepo contains the following packages:
 
-<!-- Package list will be updated as packages are added -->
+- **[pillar_core](packages/pillar-core)** - Core package with clean architecture foundation and dependency injection
+- **[pillar_remote_config](packages/pillar-remote-config)** - Remote configuration management
+
+## 🔄 Versioning & Release Management
+
+This monorepo uses [Melos](https://melos.invertase.dev/) for package management and versioning. See [docs/VERSIONING.md](docs/VERSIONING.md) for detailed instructions.
+
+### Quick Commands
+
+```bash
+# Check current versions
+melos run version:check
+
+# Local release (development)
+melos run release:local
+
+# Production release
+melos run release:publish
+
+# Check dependencies
+melos run deps:graph
+
+# Handle breaking changes
+melos run breaking:check
+melos run breaking:update
+```
 
 ## Contributing
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+
+For versioning and release management, see [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Code Style
 

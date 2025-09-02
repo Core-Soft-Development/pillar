@@ -2,10 +2,15 @@
 
 This directory contains comprehensive documentation for the Pillar monorepo.
 
+## 📚 Available Documentation
+
+- **[VERSIONING.md](VERSIONING.md)** - Complete guide for package versioning and release management
+
 ## Structure
 
 ```
 docs/
+├── VERSIONING.md      # Package versioning and release management guide
 ├── architecture/      # Architecture guides and patterns
 ├── getting-started/   # Setup and initial development guides
 ├── packages/         # Package-specific documentation
@@ -15,6 +20,13 @@ docs/
 ```
 
 ## Documentation Types
+
+### Versioning & Release Management
+- Package versioning strategies
+- Breaking changes management
+- Release workflows (local vs production)
+- CI/CD integration
+- Dependency graph management
 
 ### Architecture Documentation
 - Clean architecture principles

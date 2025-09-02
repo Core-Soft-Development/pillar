@@ -7,6 +7,8 @@ environment:
   sdk: ">=3.6.0 <4.0.0"
   flutter: ">=3.35.0"
 
+# Workspace is managed by melos.yaml
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
