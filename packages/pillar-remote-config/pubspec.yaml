@@ -1,9 +1,7 @@
 name: pillar_remote_config
 description: Remote configuration package for Pillar framework
 version: 1.0.0
-homepage: https://github.com/Core-Soft-Development/pillar
-repository: https://github.com/Core-Soft-Development/pillar
-issue_tracker: https://github.com/Core-Soft-Development/pillar/issues
+publish_to: none
 
 environment:
   sdk: ">=3.6.0 <4.0.0"

@@ -329,17 +329,23 @@ scripts:
   ci:publish:
     run: |
       echo "📦 Publishing packages to pub.dev..."
-      
+
       # Authenticate with pub.dev if token is available
       if [ -n "$PUB_TOKEN" ]; then
         echo "$PUB_TOKEN" | dart pub token add https://pub.dartlang.org
       fi
-      
+
       # Publish all packages
       melos publish --no-dry-run --yes || {
         echo "⚠️ Some packages may have failed to publish"
         echo "This is often normal for packages that haven't changed"
       }
-      
+
       echo "✅ Publishing to pub.dev completed"
     description: Publish packages to pub.dev
+
+  fix:analysis-warnings:
+    run: |
+      echo "🔧 Fixing analysis warnings..."
+      ./scripts/fix-analysis-warnings.sh
+    description: Fix common analysis warnings (path dependencies, publish_to issues)

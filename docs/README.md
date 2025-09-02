@@ -10,6 +10,7 @@ This directory contains comprehensive documentation for the Pillar monorepo.
 - **[TESTING.md](TESTING.md)** - Testing strategy and available test scripts
 - **[PUBLISHING.md](PUBLISHING.md)** - Complete guide for publishing packages to pub.dev
 - **[PUB-TOKEN-ROTATION.md](PUB-TOKEN-ROTATION.md)** - Step-by-step token rotation procedure
+- **[DEPENDENCY-MANAGEMENT.md](DEPENDENCY-MANAGEMENT.md)** - Smart dependency management between packages
 
 ## Structure
 
