@@ -162,7 +162,7 @@ jobs:
         run: melos run format
 
       - name: 🧪 Run tests
-        run: melos run test
+        run: melos run test:all
 
       - name: 🏗️ Build packages
         run: melos run build_runner

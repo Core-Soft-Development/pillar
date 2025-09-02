@@ -62,7 +62,7 @@ jobs:
         run: |
           echo "🔍 Running pre-release validation..."
           melos run analyze
-          melos run test
+          melos run test:all
           echo "✅ Validation passed"
 
       - name: 🏷️ Preview release changes

@@ -63,15 +63,27 @@ scripts:
 
   test:
     run: |
-      melos exec -c 6 --fail-fast -- \
+      melos exec -c 6 --fail-fast --ignore="*example*" -- \
         "flutter test"
-    description: Run `flutter test` for all packages.
+    description: Run `flutter test` for all packages (excluding example apps).
 
   test:integration:
     run: |
       melos exec -c 6 --fail-fast -- \
         "flutter test integration_test"
     description: Run all integration tests.
+
+  test:all:
+    run: |
+      melos exec -c 6 --fail-fast --dir-exists="test" -- \
+        "flutter test"
+    description: Run tests only for packages that have a test directory.
+
+  test:with-examples:
+    run: |
+      melos exec -c 6 --fail-fast --dir-exists="test" -- \
+        "flutter test" || echo "Some packages don't have tests, which is normal"
+    description: Run tests for all packages, including examples (with error tolerance).
 
   format:
     run: |

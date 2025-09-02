@@ -69,7 +69,7 @@ jobs:
         run: melos bootstrap
 
       - name: 🧪 Run tests
-        run: melos run test
+        run: melos run test:all
 
       - name: 📊 Upload coverage
         uses: codecov/codecov-action@v3
