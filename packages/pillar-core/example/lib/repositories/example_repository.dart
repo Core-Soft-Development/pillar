@@ -4,6 +4,7 @@ import 'package:pillar_core/pillar_core.dart';
 abstract interface class ExampleRepository implements BaseRepository {
   /// Repository name
   Future<String> getData();
+
   /// Clear cached data
   Future<void> clearCache();
 }
