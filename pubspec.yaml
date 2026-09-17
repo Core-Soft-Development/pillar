@@ -1,4 +1,4 @@
-name: pillar
+name: pillar_workspace
 description: A Flutter monorepo for building scalable applications
 version: 1.0.0
 publish_to: none

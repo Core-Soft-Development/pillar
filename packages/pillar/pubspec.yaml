@@ -1,0 +1,19 @@
+# GENERATED FILE — do not edit by hand.
+# Regenerate with: melos run bom:sync
+#
+# Versions are exact, not caret ranges. A BoM that allowed resolution to drift
+# would guarantee nothing; the point is a set that CI released together.
+name: pillar
+description: Bill of Materials for the Pillar framework — pins one compatible, released set of pillar_* package versions.
+version: 2026.09.0
+homepage: https://github.com/Core-Soft-Development/pillar
+repository: https://github.com/Core-Soft-Development/pillar
+issue_tracker: https://github.com/Core-Soft-Development/pillar/issues
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.35.0"
+
+dependencies:
+  pillar_core: 1.0.0
+  pillar_remote_config: 1.0.0
