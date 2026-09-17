@@ -7,8 +7,9 @@
 // having one implementation import another, and by the time anyone notices,
 // consumers can no longer swap either one out. These rules run in CI.
 
-import 'dart:convert';
 import 'dart:io';
+
+import 'melos_json.dart';
 
 /// Where a package sits in the stack. Derived from its path and name, so the
 /// folder layout is the source of truth rather than a hand-kept list.
@@ -171,10 +172,10 @@ void _checkCycles(Map<String, List<String>> graph, Map<String, Package> known) {
 bool _isPlatformInterfaceOf(Package dep, Package p) => dep.name == '${p.name}_platform_interface';
 
 Future<Map<String, Package>> _loadPackages() async {
-  final raw = await _melos(['list', '--json']);
+  final entries = (await melosJson(['list', '--json'])) as List;
   final packages = <String, Package>{};
 
-  for (final entry in (jsonDecode(raw) as List).cast<Map<String, dynamic>>()) {
+  for (final entry in entries.cast<Map<String, dynamic>>()) {
     final name = entry['name'] as String;
     final path = entry['location'] as String;
     final isPrivate = entry['private'] == true;
@@ -184,8 +185,8 @@ Future<Map<String, Package>> _loadPackages() async {
 }
 
 Future<Map<String, List<String>>> _loadGraph() async {
-  final raw = await _melos(['list', '--graph']);
-  return (jsonDecode(raw) as Map<String, dynamic>).map((k, v) => MapEntry(k, (v as List).cast<String>()));
+  final graph = (await melosJson(['list', '--graph'])) as Map<String, dynamic>;
+  return graph.map((k, v) => MapEntry(k, (v as List).cast<String>()));
 }
 
 /// `packages/remote_config/pillar_remote_config` -> `remote_config`.
@@ -209,13 +210,4 @@ Tier _tierOf(String name, String path, bool isPrivate) {
   // pillar_remote_config == the interface; pillar_remote_config_firebase, an
   // implementation of it.
   return name == 'pillar_$domain' ? Tier.domain : Tier.implementation;
-}
-
-Future<String> _melos(List<String> args) async {
-  final result = await Process.run('melos', args, runInShell: true);
-  if (result.exitCode != 0) {
-    stderr.writeln('melos ${args.join(" ")} failed:\n${result.stderr}');
-    exit(result.exitCode);
-  }
-  return result.stdout as String;
 }

@@ -1,0 +1,189 @@
+name: Release
+
+# Versions, publishes and tags every changed package. Independent versions:
+# each package is bumped from its own conventional commits, and the `pillar`
+# BoM pins the resulting set.
+#
+# The order below is what makes the release atomic. Nothing is written to git
+# until pub.dev has accepted every package, because pub.dev does not allow
+# unpublishing: a tag pushed ahead of a failed publish burns that version for
+# good.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".idea/**"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Which versioning to apply
+        type: choice
+        default: stable
+        options:
+          - stable # bump from conventional commits
+          - prerelease # cut/advance a beta (1.2.0-beta.0)
+          - graduate # promote existing prereleases to stable
+      dry_run:
+        description: Rehearse against pub.dev without publishing or pushing
+        type: boolean
+        default: true
+
+# Releases queue; they never cancel each other. Cancelling mid-publish is how
+# you end up with three of eight packages on pub.dev and no way back.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Verify, publish and tag
+    # Verification lives in this job rather than a separate one: a second job
+    # means a second checkout and a second bootstrap, and CI minutes are the
+    # constraint here.
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    # Protect this environment in repo settings to require an approval before
+    # anything reaches pub.dev.
+    environment: pub-dev
+
+    permissions:
+      contents: write # push the version commit, tags and GitHub releases
+
+    outputs:
+      released: ${{ steps.version.outputs.released }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # melos reads conventional commits since the last tag
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: ./.github/actions/setup-melos
+
+      # --- 0. verify ---------------------------------------------------------
+
+      - name: Analyze, format, validate graph, test
+        run: melos run ci:verify
+
+      # --- 1. version locally ------------------------------------------------
+      # melos writes changelogs, bumps dependents' constraints, commits and
+      # tags <package>-v<version>. All of it stays local; nothing is pushed.
+
+      - name: Version changed packages
+        id: version
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          before="$(git rev-parse HEAD)"
+          case "${{ inputs.mode || 'stable' }}" in
+            prerelease) melos run version:prerelease ;;
+            graduate)   melos run version:graduate ;;
+            *)          melos run version ;;
+          esac
+          after="$(git rev-parse HEAD)"
+
+          if [ "$before" = "$after" ]; then
+            echo "No package had changes worth releasing."
+            echo "released=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "released=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Versioned"
+              echo '```'
+              melos list --long
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # --- 2. authenticate ---------------------------------------------------
+      # A stored credentials file, refreshed by dart pub as needed.
+      #
+      # pub.dev also supports OIDC automated publishing, which removes this
+      # secret entirely in favour of a short-lived token. Switching needs
+      # "Automated publishing" enabled per package on pub.dev first, so it is
+      # tracked separately (COR-715) rather than assumed here.
+
+      - name: Authenticate to pub.dev
+        if: steps.version.outputs.released == 'true' && inputs.dry_run != true
+        env:
+          PUB_CREDENTIALS: ${{ secrets.PUB_CREDENTIALS }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PUB_CREDENTIALS:-}" ]; then
+            echo "::error::PUB_CREDENTIALS is not configured; refusing to continue."
+            exit 1
+          fi
+          # Written to both locations dart pub reads: ~/.pub-cache is the
+          # legacy path this repo already uses, ~/.config/dart the current one.
+          mkdir -p "$HOME/.pub-cache" "$HOME/.config/dart"
+          printf '%s' "$PUB_CREDENTIALS" > "$HOME/.pub-cache/credentials.json"
+          printf '%s' "$PUB_CREDENTIALS" > "$HOME/.config/dart/pub-credentials.json"
+
+      # --- 3. rehearse -------------------------------------------------------
+      # The whole point of the ordering. pub.dev rejects packages for a dozen
+      # reasons — a short description, a missing LICENSE, an unresolvable
+      # constraint. Finding out here costs nothing; finding out after the tags
+      # are pushed costs a version number.
+
+      - name: Rehearse the publish (dry run)
+        if: steps.version.outputs.released == 'true'
+        run: melos run publish:dry-run
+
+      # --- 4. publish --------------------------------------------------------
+      # No `|| true`, no continue-on-error: a failed publish must fail the job
+      # while the tags are still local and can simply be thrown away.
+
+      - name: Publish to pub.dev
+        if: steps.version.outputs.released == 'true' && inputs.dry_run != true
+        run: melos run publish
+
+      - name: Sync and publish the BoM
+        if: steps.version.outputs.released == 'true' && inputs.dry_run != true
+        run: |
+          set -euo pipefail
+          melos run bom:sync
+
+          bom_version="$(awk '/^version:/{print $2; exit}' packages/pillar/pubspec.yaml)"
+          git add packages/pillar/pubspec.yaml
+          git commit -m "chore(bom): pin released versions in pillar v${bom_version}"
+          git tag "pillar-v${bom_version}" -m "pillar BoM ${bom_version}"
+
+          # Published last: its pins must already resolve on pub.dev.
+          melos run publish:bom
+
+      # --- 5. push -----------------------------------------------------------
+      # Only now, once every package is live, do the version commit and its
+      # tags leave the runner.
+
+      - name: Push version commit and tags
+        if: steps.version.outputs.released == 'true' && inputs.dry_run != true
+        run: |
+          set -euo pipefail
+          git push --follow-tags origin HEAD:main
+
+      # --- 6. document -------------------------------------------------------
+
+      - name: Create GitHub releases
+        if: steps.version.outputs.released == 'true' && inputs.dry_run != true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: dart run scripts/github_releases.dart
+
+      - name: Report dry run
+        if: steps.version.outputs.released == 'true' && inputs.dry_run == true
+        run: |
+          {
+            echo "## Dry run"
+            echo ""
+            echo "pub.dev accepted every package. Nothing was published, and no"
+            echo "commit or tag left the runner."
+          } >> "$GITHUB_STEP_SUMMARY"

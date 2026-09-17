@@ -11,8 +11,9 @@
 // The BoM is versioned by calendar (2026.09.0), not semver: it tracks no API
 // of its own, so a semver bump would imply a promise it cannot make.
 
-import 'dart:convert';
 import 'dart:io';
+
+import 'melos_json.dart';
 
 const bomName = 'pillar';
 const bomPath = 'packages/pillar/pubspec.yaml';
@@ -66,18 +67,8 @@ Future<void> main(List<String> args) async {
 
 /// Every package melos would publish, minus the BoM itself.
 Future<Map<String, String>> _publishedPackages() async {
-  final result = await Process.run(
-    'melos',
-    ['list', '--json', '--no-private'],
-    runInShell: true,
-  );
-  if (result.exitCode != 0) {
-    stderr.writeln('melos list failed:\n${result.stderr}');
-    exit(result.exitCode);
-  }
-
-  final packages =
-      (jsonDecode(result.stdout as String) as List).cast<Map<String, dynamic>>().where((p) => p['name'] != bomName);
+  final entries = (await melosJson(['list', '--json', '--no-private'])) as List;
+  final packages = entries.cast<Map<String, dynamic>>().where((p) => p['name'] != bomName);
 
   return {
     for (final p in packages) p['name'] as String: p['version'] as String,
