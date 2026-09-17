@@ -76,9 +76,8 @@ Future<Map<String, String>> _publishedPackages() async {
     exit(result.exitCode);
   }
 
-  final packages = (jsonDecode(result.stdout as String) as List)
-      .cast<Map<String, dynamic>>()
-      .where((p) => p['name'] != bomName);
+  final packages =
+      (jsonDecode(result.stdout as String) as List).cast<Map<String, dynamic>>().where((p) => p['name'] != bomName);
 
   return {
     for (final p in packages) p['name'] as String: p['version'] as String,
@@ -90,9 +89,7 @@ String _nextBomVersion(String? current) {
   final now = DateTime.now();
   final prefix = '${now.year}.${now.month.toString().padLeft(2, '0')}';
 
-  final previous = current == null
-      ? null
-      : RegExp(r'^version:\s*(\S+)', multiLine: true).firstMatch(current)?.group(1);
+  final previous = current == null ? null : RegExp(r'^version:\s*(\S+)', multiLine: true).firstMatch(current)?.group(1);
 
   if (previous != null && previous.startsWith('$prefix.')) {
     final patch = int.tryParse(previous.split('.').last) ?? 0;

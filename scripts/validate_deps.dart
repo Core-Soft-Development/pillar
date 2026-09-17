@@ -34,10 +34,7 @@ Future<void> main() async {
   final graph = await _loadGraph();
 
   for (final p in packages.values) {
-    final deps = (graph[p.name] ?? const [])
-        .where(packages.containsKey)
-        .map((d) => packages[d]!)
-        .toList();
+    final deps = (graph[p.name] ?? const []).where(packages.containsKey).map((d) => packages[d]!).toList();
 
     _checkLayering(p, deps);
     if (p.tier != Tier.private) {
@@ -126,10 +123,7 @@ void _checkPublishable(Package p) {
     }
   }
 
-  final description = RegExp(r'^description:\s*(.+)$', multiLine: true)
-      .firstMatch(spec)
-      ?.group(1)
-      ?.trim();
+  final description = RegExp(r'^description:\s*(.+)$', multiLine: true).firstMatch(spec)?.group(1)?.trim();
   if (description == null || description.length < 60) {
     violations.add(
       '[rule 6] ${p.name} needs a description of at least 60 characters '
@@ -174,8 +168,7 @@ void _checkCycles(Map<String, List<String>> graph, Map<String, Package> known) {
 
 // --- loading ---------------------------------------------------------------
 
-bool _isPlatformInterfaceOf(Package dep, Package p) =>
-    dep.name == '${p.name}_platform_interface';
+bool _isPlatformInterfaceOf(Package dep, Package p) => dep.name == '${p.name}_platform_interface';
 
 Future<Map<String, Package>> _loadPackages() async {
   final raw = await _melos(['list', '--json']);
@@ -192,8 +185,7 @@ Future<Map<String, Package>> _loadPackages() async {
 
 Future<Map<String, List<String>>> _loadGraph() async {
   final raw = await _melos(['list', '--graph']);
-  return (jsonDecode(raw) as Map<String, dynamic>)
-      .map((k, v) => MapEntry(k, (v as List).cast<String>()));
+  return (jsonDecode(raw) as Map<String, dynamic>).map((k, v) => MapEntry(k, (v as List).cast<String>()));
 }
 
 /// `packages/remote_config/pillar_remote_config` -> `remote_config`.
