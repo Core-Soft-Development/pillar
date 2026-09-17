@@ -1,5 +1,7 @@
 {
-  "extends": ["@commitlint/config-conventional"],
+  "extends": [
+    "@commitlint/config-conventional"
+  ],
   "rules": {
     "type-enum": [
       2,
@@ -18,24 +20,42 @@
         "revert"
       ]
     ],
-    "scope-enum": [
+    "scope-case": [
       2,
       "always",
+      "kebab-case"
+    ],
+    "scope-empty": [
+      0,
+      "never"
+    ],
+    "subject-case": [
+      2,
+      "never",
       [
-        "core",
-        "ui",
-        "auth",
-        "network",
-        "di",
-        "firebase",
-        "docs",
-        "config"
+        "sentence-case",
+        "start-case",
+        "pascal-case",
+        "upper-case"
       ]
     ],
-    "subject-case": [2, "never", ["sentence-case", "start-case", "pascal-case", "upper-case"]],
-    "subject-empty": [2, "never"],
-    "subject-full-stop": [2, "never", "."],
-    "type-case": [2, "always", "lower-case"],
-    "type-empty": [2, "never"]
+    "subject-empty": [
+      2,
+      "never"
+    ],
+    "subject-full-stop": [
+      2,
+      "never",
+      "."
+    ],
+    "type-case": [
+      2,
+      "always",
+      "lower-case"
+    ],
+    "type-empty": [
+      2,
+      "never"
+    ]
   }
 }

@@ -13,19 +13,19 @@ melos run test
 - ✅ Fast execution by ignoring non-essential packages
 - ✅ Recommended for CI/CD pipelines
 
-### `melos run test:all`
+### `melos run test`
 **Comprehensive testing** - Runs tests only for packages that have a `test/` directory.
 ```bash
-melos run test:all
+melos run test
 ```
 - ✅ Automatically detects packages with tests
 - ✅ Skips packages without test directories
 - ✅ Safe for all scenarios
 
-### `melos run test:with-examples`
+### `melos run test:coverage`
 **Inclusive testing** - Attempts to run tests for all packages with error tolerance.
 ```bash
-melos run test:with-examples
+melos run test:coverage
 ```
 - ⚠️ May show errors for packages without tests
 - ✅ Continues execution even if some packages fail
@@ -115,25 +115,28 @@ void main() {
 ## 🚀 CI/CD Integration
 
 ### GitHub Actions
-The CI/CD pipeline uses `test:all` to ensure only packages with tests are executed:
+Tests run as part of `melos run ci:verify`, which is what a pull request
+executes — the same command you can run locally:
 
 ```yaml
-- name: 🧪 Run tests
-  run: melos run test:all
+- name: Analyze, format, validate graph, test
+  run: melos run ci:verify
 ```
+
+Coverage runs separately, in `extended-checks.yml`, on demand.
 
 ### Local Development
 For local development, use the appropriate script based on your needs:
 
 ```bash
-# Quick test run (recommended)
+# Fast loop
 melos run test
 
-# Comprehensive testing
-melos run test:all
+# With lcov output under <package>/coverage/
+melos run test:coverage
 
-# Debug test coverage
-melos run test:with-examples
+# Everything a PR must pass
+melos run ci:verify
 ```
 
 ## 📊 Test Coverage
@@ -161,7 +164,7 @@ melos exec --dir-exists="test" -- "genhtml coverage/lcov.info -o coverage/html"
 #### Package Without Tests
 **Error**: `Test directory "test" does not appear to contain any test files.`
 **Solutions**:
-1. Use `melos run test:all` instead of `melos run test:with-examples`
+1. Use `melos run test` for the fast loop; `melos run test:coverage` when you need lcov output
 2. Create a test directory with at least one test file
 3. Exclude the package from test scripts
 

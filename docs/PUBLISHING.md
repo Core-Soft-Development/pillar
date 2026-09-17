@@ -1,271 +1,98 @@
-# Publishing to pub.dev
+# Publishing
 
-This guide explains how to publish packages from the Pillar monorepo to pub.dev.
+Packages are published to pub.dev by the `Release` workflow when a commit
+lands on `main`.
 
-## 📋 Table of Contents
+## The order matters
 
-- [Overview](#overview)
-- [Prerequisites](#prerequisites)
-- [Package Configuration](#package-configuration)
-- [Authentication](#authentication)
-- [Publishing Process](#publishing-process)
-- [Troubleshooting](#troubleshooting)
+pub.dev does not allow unpublishing. A version that ships is spent — if a tag
+is pushed and the publish then fails, that version number can never be
+reused. The pipeline is therefore ordered so that **nothing is written to git
+until pub.dev has accepted everything**:
 
-## 🎯 Overview
-
-The Pillar monorepo publishes packages to **pub.dev**, the official Dart and Flutter package repository. All packages are configured to be published as open-source packages.
-
-## ✅ Prerequisites
-
-### 1. pub.dev Account
-- Create an account at [pub.dev](https://pub.dev)
-- Verify your email address
-- Set up two-factor authentication (recommended)
-
-### 2. Package Publisher Rights
-- You must be added as a publisher for each package
-- For new packages, the first publisher is automatically set when publishing
-
-### 3. Local Authentication
-```bash
-# Authenticate locally (required for first-time publishing)
-dart pub login
+```
+1. verify          analyze · format · dependency graph · tests
+2. version         melos bumps, writes changelogs, commits and tags — all local
+3. rehearse        melos publish (dry run) against pub.dev
+                     ✗ → abort. No commit, no tag, no version burned.
+4. publish         melos publish --no-dry-run, topological order
+5. sync the BoM    pin what actually landed, publish it last
+6. push            git push --follow-tags
+7. document        one GitHub release per package
 ```
 
-## 🔧 Package Configuration
+Step 3 is the one that earns its keep. pub.dev rejects packages for a dozen
+reasons — a description under 60 characters, a missing LICENSE, a dependency
+constraint that will not resolve, a version already published. Finding out at
+step 3 costs nothing. Finding out at step 6 costs a version number.
 
-### Required Metadata
-Each package must have the following metadata in `pubspec.yaml`:
+### What is still not atomic
 
-```yaml
-name: pillar_core
-version: 1.0.0
-description: Core package with clean architecture foundation and dependency injection
-homepage: https://github.com/Core-Soft-Development/pillar
-repository: https://github.com/Core-Soft-Development/pillar
-issue_tracker: https://github.com/Core-Soft-Development/pillar/issues
+If the runner dies between publishing package 3 of 8 and package 4, the first
+three are live and the rest are not. pub.dev has no transaction to roll back,
+so this cannot be fully closed — but the window is seconds wide, and the
+rehearsal removes nearly every cause of a mid-sequence failure.
 
-environment:
-  sdk: ">=3.6.0 <4.0.0"
-  flutter: ">=3.0.0"
-```
+Recovery: re-run the workflow. `melos publish` skips versions already on
+pub.dev, and `gh release create` is guarded, so a second run finishes the job
+rather than duplicating it.
 
-### Package Validation
-Before publishing, ensure:
-- ✅ Package name follows pub.dev naming conventions
-- ✅ Version follows semantic versioning
-- ✅ Description is clear and informative
-- ✅ All required metadata is present
-- ✅ Package passes `dart pub publish --dry-run`
+## Running a release
 
-## 🔐 Authentication
+Automatic on every push to `main`. To rehearse by hand:
 
-### Local Development
-```bash
-# Login to pub.dev (interactive)
-dart pub login
+**Actions → Release → Run workflow**, with `dry_run` left at its default. The
+job versions, asks pub.dev to validate everything, and stops — publishing
+nothing and pushing nothing.
 
-# Verify authentication
-dart pub token list
-```
+`mode` selects the versioning: `stable` (from conventional commits),
+`prerelease` (beta), or `graduate` (promote betas to stable).
 
-### CI/CD (GitHub Actions)
-1. **Generate Token:**
-   ```bash
-   # After logging in locally
-   cat ~/.pub-cache/credentials.json
-   # Copy the "accessToken" value
-   ```
+## Requirements for a package to publish
 
-2. **Add GitHub Secret:**
-   - Go to repository Settings → Secrets and variables → Actions
-   - Add new secret: `PUB_TOKEN`
-   - Value: Your access token from step 1
+`melos run deps:validate` checks these, so a violation fails the PR rather
+than the release:
 
-3. **Workflow Usage:**
-   ```yaml
-   - name: 📦 Publish to pub.dev
-     env:
-       PUB_TOKEN: ${{ secrets.PUB_TOKEN }}
-     run: |
-       echo "$PUB_TOKEN" | dart pub token add https://pub.dartlang.org
-       melos publish --no-dry-run --yes
-   ```
+- no `publish_to: none` (that was why `pillar_remote_config` could never ship)
+- **no `path:` dependency** — pub.dev rejects them. Depend on siblings by
+  version constraint; `melos bootstrap` supplies the local path through a
+  generated `pubspec_overrides.yaml`:
 
-## 🚀 Publishing Process
+  ```yaml
+  dependencies:
+    pillar_core: ^1.0.0     # in pubspec.yaml, published
+  ```
 
-### Manual Publishing
+- `homepage`, `repository`, `issue_tracker`
+- a description of at least 60 characters (pana scores on it)
+- `LICENSE` and `CHANGELOG.md` in the package folder
 
-#### Single Package
-```bash
-# Navigate to package directory
-cd packages/pillar_core
+## Credentials
 
-# Dry run (validate without publishing)
-dart pub publish --dry-run
+`PUB_CREDENTIALS` — the full `credentials.json`, refresh token included — set
+as a repository secret, consumed by the `pub-dev` environment. See
+[SECRETS.md](../.github/SECRETS.md) and
+[PUB-TOKEN-ROTATION.md](./PUB-TOKEN-ROTATION.md).
 
-# Publish
-dart pub publish
-```
+pub.dev also supports OIDC automated publishing, which removes the stored
+secret in favour of a short-lived token minted per run. It needs "Automated
+publishing" enabled per package on pub.dev first, so it is tracked separately
+rather than assumed here (COR-715).
 
-#### All Packages (Melos)
-```bash
-# Dry run all packages
-melos publish --dry-run
+The `pub-dev` environment should carry a required reviewer in repository
+settings, so that reaching pub.dev takes a human approval.
 
-# Publish all changed packages
-melos publish --no-dry-run --yes
-```
+## Publishing by hand
 
-### Automated Publishing (CI/CD)
-
-Publishing is automatically triggered when:
-1. Changes are pushed to `main` branch
-2. Conventional commit messages indicate package changes
-3. All quality checks pass (lint, format, test, build)
-
-**Workflow:**
-1. 🔍 **Detect Changes** - Identify modified packages
-2. 📈 **Version Bump** - Update versions based on conventional commits
-3. 📝 **Update Changelogs** - Generate changelog entries
-4. 🏷️ **Create Git Tags** - Tag new versions
-5. 📦 **Publish to pub.dev** - Upload packages
-6. 🚀 **GitHub Release** - Create GitHub release with notes
-
-## 📊 Package Status
-
-### Current Packages
-
-| Package | Status | Version | pub.dev |
-|---------|--------|---------|---------|
-| `pillar_core` | ✅ Ready | 1.0.0 | [View](https://pub.dev/packages/pillar_core) |
-| `pillar_remote_config` | ✅ Ready | 1.0.0 | [View](https://pub.dev/packages/pillar_remote_config) |
-
-### Package Dependencies
-```mermaid
-graph TB
-    subgraph "Pillar Packages"
-        CORE[pillar_core v1.0.0]
-        REMOTE[pillar_remote_config v1.0.0]
-        
-        REMOTE --> CORE
-    end
-    
-    subgraph "External Dependencies"
-        FLUTTER[Flutter SDK]
-        PROVIDER[provider]
-        FIREBASE[firebase_remote_config]
-    end
-    
-    CORE --> FLUTTER
-    CORE --> PROVIDER
-    REMOTE --> FIREBASE
-    
-    classDef pillar fill:#e1f5fe
-    classDef external fill:#f3e5f5
-    
-    class CORE,REMOTE pillar
-    class FLUTTER,PROVIDER,FIREBASE external
-```
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-#### Authentication Failed
-```
-Error: 401 Unauthorized when accessing https://pub.dartlang.org
-```
-**Solution:**
-1. Check `PUB_TOKEN` is correct and not expired
-2. Re-authenticate: `dart pub login`
-3. Update GitHub secret with new token
-
-#### Package Already Exists
-```
-Error: Package already exists
-```
-**Solution:**
-1. Check if you're a publisher: Visit package page on pub.dev
-2. Request publisher access from existing publishers
-3. Or choose a different package name
-
-#### Version Already Published
-```
-Error: Version 1.0.0 of package_name already exists
-```
-**Solution:**
-1. Increment version in `pubspec.yaml`
-2. Use Melos versioning: `melos version --manual`
-3. Ensure CI properly increments versions
-
-#### Missing Publisher Permissions
-```
-Error: Insufficient permissions to publish
-```
-**Solution:**
-1. Visit package page on pub.dev
-2. Request publisher access from existing publishers
-3. Or create package with different name
-
-#### Validation Failed
-```
-Error: Package validation failed
-```
-**Solution:**
-1. Run `dart pub publish --dry-run` to see specific issues
-2. Fix validation errors (missing metadata, etc.)
-3. Ensure all required fields are present
-
-### Verification Commands
+Rarely necessary, and it bypasses the ordering above.
 
 ```bash
-# Check package health
-dart pub deps
-
-# Validate before publishing
-dart pub publish --dry-run
-
-# Check published versions
-dart pub deps --style=list | grep pillar
-
-# Verify authentication
-dart pub token list
+melos run publish:dry-run   # always first
+melos run publish
+melos run bom:sync
+melos run publish:bom       # last: its pins must already resolve
 ```
 
-### Getting Help
-
-1. **pub.dev Documentation**: [https://dart.dev/tools/pub/publishing](https://dart.dev/tools/pub/publishing)
-2. **GitHub Issues**: Create an issue in this repository
-3. **Melos Documentation**: [https://melos.invertase.dev](https://melos.invertase.dev)
-
-## 🎯 Best Practices
-
-### Version Management
-- Use semantic versioning (major.minor.patch)
-- Follow conventional commits for automatic versioning
-- Test packages locally before publishing
-- Use `--dry-run` to validate before publishing
-
-### Quality Assurance
-- All packages pass linting and formatting checks
-- Comprehensive test coverage
-- Documentation is up-to-date
-- Examples work correctly
-
-### Release Strategy
-- Publish breaking changes as major versions
-- Use prerelease versions for testing (1.0.0-beta.1)
-- Coordinate releases of dependent packages
-- Update dependent packages when dependencies change
-
-### Security
-- Rotate pub.dev tokens regularly
-- Use minimal required permissions
-- Never commit tokens to repository
-- Monitor package downloads and usage
-
-For more details, see:
-- [CI/CD Documentation](CI-CD.md)
-- [Versioning Guide](VERSIONING.md)
-- [Development Workflow](DEVELOPMENT-WORKFLOW.md)
+`melos publish` defaults to a dry run — the `publish` script passes
+`--no-dry-run` explicitly. A script that omits it reports success while
+publishing nothing.

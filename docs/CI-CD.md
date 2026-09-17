@@ -1,296 +1,90 @@
-# CI/CD Pipeline Documentation
+# CI/CD
 
-This document explains the CI/CD pipeline setup for the Pillar monorepo, including automated versioning, testing, and publishing.
+Three workflows. Nothing runs twice over the same commit.
 
-## 📋 Table of Contents
+| Workflow | Trigger | Does |
+|---|---|---|
+| `pr-checks.yml` | pull request | title, verification, release rehearsal (PRs to `main`) |
+| `release.yml` | push to `main`, manual | version, publish, tag, document |
+| `extended-checks.yml` | manual | example app builds, coverage |
 
-- [Overview](#overview)
-- [Workflows](#workflows)
-- [Automated Versioning](#automated-versioning)
-- [Release Process](#release-process)
-- [Configuration](#configuration)
-- [Troubleshooting](#troubleshooting)
+## Pull requests
 
-## 🎯 Overview
-
-The Pillar monorepo uses GitHub Actions for CI/CD with the following key features:
-
-- **Automated Quality Checks**: Linting, formatting, and testing on every PR
-- **Conventional Commits**: Automatic versioning based on commit messages
-- **Automated Publishing**: Packages are published to pub.dev after successful builds
-- **Changelog Generation**: Automatic changelog updates for packages and workspace
-- **Branch Protection**: Only CI can update versions and create releases
-
-## 🔄 Workflows
-
-### 1. PR Checks (`pr-checks.yml`)
-
-**Triggers**: Pull requests to `main` or `develop`
-
-**Features**:
-- Validates PR title follows conventional commits
-- Analyzes which packages have changes
-- Runs quality checks (lint, format, test, build)
-- Previews version changes that would occur after merge
-- Comments on PR with version preview
-
-**Example PR Comment**:
 ```
-🔮 Version Preview
-
-This PR will affect the following packages:
-- pillar_core: 1.1.0 → 1.2.0 (minor)
-- pillar_remote_config: 1.1.0 → 1.1.1 (patch)
-
-⚠️ Breaking Changes Detected
-This PR contains breaking changes and will trigger a MAJOR version bump.
+title              conventional commit title
+verify             analyze · format:check · deps:validate · test
+release-rehearsal  pub.dev dry run + BoM check   (only for PRs into main)
 ```
 
-### 2. CI/CD Pipeline (`ci-cd.yml`)
+`verify` runs `melos run ci:verify`, which is the same command you can run
+locally — no separate CI-only definition to drift from.
 
-**Triggers**: Push to `main` or `develop`
+Scopes in PR titles are **not** restricted to a fixed list. The previous one
+predated half the packages, so a correctly scoped PR was rejected for naming a
+package that exists.
 
-**Jobs**:
-1. **Analyze** - Code quality checks
-2. **Test** - Run all tests with coverage
-3. **Build** - Build packages and examples
-4. **Version & Publish** - Automated versioning and publishing (main only)
+Draft PRs are skipped.
 
-**Flow**:
-```
-Push to main → Quality Checks → Version Packages → Update Changelogs → Publish to pub.dev → Create GitHub Release
-```
+## Release
 
-### 3. Manual Release (`manual-release.yml`)
+See [PUBLISHING.md](./PUBLISHING.md) for the ordering and why it is what it is.
 
-**Triggers**: Manual workflow dispatch
+Two properties worth calling out:
 
-**Options**:
-- Release type: patch, minor, major, prerelease, graduate
-- Target packages: specific packages or all changed
-- Dry run: preview changes without applying
+- **Releases queue, they never cancel each other.** `cancel-in-progress: false`
+  on a dedicated concurrency group. The old pipeline had `cancel-in-progress:
+  true` covering the release job, so two merges in quick succession could kill a
+  release between pushing tags and publishing.
+- **Failures are loud.** No `|| echo`, no `continue-on-error` on anything that
+  publishes. `set -euo pipefail` throughout.
 
-**Use Cases**:
-- Hotfix releases
-- Major version releases requiring coordination
-- Testing release process
+## Toolchain versions
 
-## 🏷️ Automated Versioning
+Read from the files that already hold them, not repeated in each workflow:
 
-### Conventional Commits
+- Flutter ← `.fvmrc`
+- melos ← `pubspec.lock`
 
-The system uses conventional commits to determine version bumps:
+The composite action at `.github/actions/setup-melos` resolves both, restores
+the pub cache and bootstraps. Every job uses it, so no job can drift onto a
+different toolchain than a developer's machine.
 
-| Commit Type | Version Bump | Example |
-|-------------|--------------|---------|
-| `fix:` | Patch (1.0.0 → 1.0.1) | `fix: resolve memory leak` |
-| `feat:` | Minor (1.0.0 → 1.1.0) | `feat: add new API endpoint` |
-| `feat!:` or `BREAKING CHANGE:` | Major (1.0.0 → 2.0.0) | `feat!: redesign API` |
-| `chore:`, `docs:`, etc. | No version change | `docs: update README` |
+## Keeping CI minutes down
 
-### Version Strategy
+Roughly what was changed, and why:
 
-- **Individual Packages**: Each package is versioned independently
-- **Dependency Updates**: Dependent packages are automatically updated when dependencies change
-- **Breaking Changes**: Trigger major version bumps and update all dependents
-- **Changelog Generation**: Automatic changelog entries from commit messages
+- **Pull requests ran two workflows.** `ci-cd.yml` triggered on `pull_request`
+  as well as `push`, so analyze, test and build each ran twice per PR.
+- **APK builds ran on every push** with `continue-on-error: true` — minutes
+  spent on a result that could not fail the build. Moved to
+  `extended-checks.yml`, on demand.
+- **No cache.** Every job re-resolved every dependency from scratch.
+- **Two workflows validated the PR title**, with different rules.
+- **Verification and release were separate jobs**, paying a second checkout and
+  bootstrap. They are one job now.
+- `paths-ignore` for `**.md`, `docs/**`, `.idea/**`.
 
-### Example Versioning Flow
+## Secrets
 
-1. Developer makes changes to `pillar_core`
-2. Commits with `feat!: redesign dependency injection API`
-3. Creates PR → CI shows version preview
-4. PR merged → CI detects breaking change
-5. `pillar_core` bumped to 2.0.0
-6. `pillar_remote_config` (depends on pillar_core) bumped to 2.0.0
-7. Changelogs updated with breaking change details
-8. Packages published to pub.dev
-9. GitHub release created
+| Secret | Used by | Purpose |
+|---|---|---|
+| `PUB_CREDENTIALS` | `release.yml` | publishing to pub.dev |
+| `GITHUB_TOKEN` | provided | push tags, create releases |
 
-## 🚀 Release Process
+Every workflow declares `permissions: contents: read` at the top and raises it
+only on the job that needs it.
 
-### Automatic Releases (Recommended)
+## Branch protection
 
-1. **Development**: Work on feature branches
-2. **PR Creation**: Create PR with conventional commit title
-3. **Review**: CI shows version preview in PR comments
-4. **Merge**: PR merged to main
-5. **Release**: CI automatically versions, publishes, and creates release
+The release job pushes the version commit to `main` with `GITHUB_TOKEN`. If
+`main` is protected, that token needs a bypass — otherwise the push is rejected
+after the packages are already on pub.dev, which is the one failure mode the
+ordering cannot protect you from. Grant the bypass, or swap in a GitHub App
+token.
 
-### Manual Releases
-
-For special cases (hotfixes, coordinated releases):
-
-1. Go to `Actions` tab in GitHub
-2. Select `Manual Release` workflow
-3. Click `Run workflow`
-4. Choose release type and options
-5. Review changes (use dry run first)
-6. Execute release
-
-### Hotfix Process
+## Running checks locally
 
 ```bash
-# 1. Create hotfix branch
-git checkout -b hotfix/critical-security-fix
-
-# 2. Make fix with conventional commit
-git commit -m "fix: resolve critical security vulnerability"
-
-# 3. Create PR
-# 4. After merge, CI automatically creates patch release
+melos run ci:verify         # exactly what a PR runs
+melos run publish:dry-run   # exactly what the rehearsal runs
 ```
-
-## ⚙️ Configuration
-
-### Required Secrets
-
-Set these in GitHub repository settings:
-
-```
-PUB_TOKEN=your-pub-dev-token
-```
-
-### Melos Configuration
-
-Key settings in `melos.yaml`:
-
-```yaml
-command:
-  version:
-    updateChangelogs: true
-    linkToCommits: true
-    workspaceChangelog: true
-    updateDependentsVersionConstraints: true
-    generateChangelog: true
-```
-
-### Branch Protection
-
-Recommended GitHub branch protection rules for `main`:
-
-- ✅ Require a pull request before merging
-- ✅ Require status checks to pass before merging
-- ✅ Require branches to be up to date before merging
-- ✅ Include administrators
-- ✅ Allow force pushes (for CI bot only)
-
-## 📊 Monitoring and Observability
-
-### Release Tracking
-
-- **GitHub Releases**: Automatic release notes with package versions
-- **Git Tags**: Individual package tags (e.g., `pillar_core@1.2.0`)
-- **Changelog Files**: Updated automatically with conventional commit messages
-
-### Metrics
-
-Monitor these key metrics:
-
-- **Release Frequency**: How often packages are released
-- **Build Success Rate**: Percentage of successful CI runs
-- **Test Coverage**: Code coverage from automated tests
-- **Time to Release**: Time from commit to published package
-
-### Notifications
-
-Set up notifications for:
-
-- ✅ Successful releases
-- ❌ Failed releases
-- ⚠️ Breaking changes
-- 🔒 Security updates
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-#### Version Not Updated
-**Problem**: Package version didn't change after merge
-**Solution**: Check if commit follows conventional commit format
-
-#### pub.dev Publish Failed
-**Problem**: Package failed to publish
-**Solution**: 
-1. Check pub.dev credentials (PUB_TOKEN)
-2. Verify package doesn't already exist or you have publish permissions
-3. Check network connectivity
-
-#### Dependency Conflicts
-**Problem**: Packages have conflicting dependency versions
-**Solution**: Run `melos bootstrap` to resolve conflicts
-
-#### Breaking Changes Not Detected
-**Problem**: Breaking changes didn't trigger major version
-**Solution**: Ensure commit message includes `!` or `BREAKING CHANGE:`
-
-### Debug Commands
-
-```bash
-# Check what would be versioned
-melos run ci:check-changes
-
-# Preview version changes
-melos version --no-git-tag-version --no-git-commit-version --all --yes
-
-# Check dependency graph
-melos run deps:graph
-
-# Validate before release
-melos run ci:validate-before-release
-```
-
-### CI Logs
-
-Check these logs when debugging:
-
-1. **Analyze Job**: Code quality issues
-2. **Test Job**: Test failures
-3. **Version & Publish Job**: Versioning and publishing issues
-4. **GitHub Actions Summary**: High-level overview
-
-## 🔐 Security Considerations
-
-### Secrets Management
-- Use repository secrets, never hardcode credentials
-- Rotate secrets regularly
-- Use tokens with minimal required permissions for pub.dev
-
-### Branch Protection
-- Protect main branch from direct pushes
-- Require PR reviews for sensitive changes
-- Only allow CI bot to create version commits
-
-### Dependency Security
-- Automated dependency updates with Dependabot
-- Security scanning in CI pipeline
-- Regular security audits
-
-## 📈 Best Practices
-
-### Commit Messages
-```bash
-# Good
-feat: add user authentication
-fix: resolve memory leak in provider
-feat!: redesign API for better performance
-
-# Bad
-update code
-fix bug
-changes
-```
-
-### PR Management
-- Use descriptive PR titles with conventional commit format
-- Review version preview comments before merging
-- Test breaking changes thoroughly
-
-### Release Planning
-- Use semantic versioning consistently
-- Document breaking changes in PR descriptions
-- Coordinate major releases across teams
-
----
-
-This CI/CD pipeline ensures consistent, reliable releases while maintaining high code quality and proper version management across the entire monorepo.
