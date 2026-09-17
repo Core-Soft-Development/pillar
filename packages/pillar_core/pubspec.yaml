@@ -14,10 +14,14 @@ issue_tracker: https://github.com/Core-Soft-Development/pillar/issues
 environment:
   sdk: ">=3.12.0 <4.0.0"
 
+# Resolved as part of the workspace declared in the root pubspec:
+# one lockfile and one .dart_tool for the whole repo.
+resolution: workspace
+
 dependencies:
   meta: ^1.12.0
 
 dev_dependencies:
   coverage: ^1.11.0
-  lints: ^5.0.0
+  lints: ^6.0.0
   test: ^1.25.0

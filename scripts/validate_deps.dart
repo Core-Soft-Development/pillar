@@ -154,8 +154,8 @@ void _checkPublishable(Package p) {
   if (!p.pubspec.existsSync()) return;
   final spec = p.pubspec.readAsStringSync();
 
-  // Rule 5. A path dependency is rejected by pub.dev at publish time; melos
-  // supplies the local path through a generated pubspec_overrides.yaml.
+  // Rule 5. A path dependency is rejected by pub.dev at publish time; the pub
+  // workspace resolves sibling packages from a version constraint instead.
   if (RegExp(r'^\s+path:\s', multiLine: true).hasMatch(spec)) {
     violations.add(
       '[rule 5] ${p.name} declares a path: dependency, which pub.dev rejects — '

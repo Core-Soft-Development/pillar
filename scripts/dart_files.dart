@@ -14,13 +14,14 @@ const _generatedSuffixes = ['.g.dart', '.freezed.dart', '.gr.dart', '.config.dar
 const _skippedDirs = {'.dart_tool', '.git', '.fvm', '.idea', 'build', '.symlinks', 'ios', 'macos', 'windows', 'linux'};
 
 void main() {
-  final files = Directory.current
-      .listSync(recursive: true, followLinks: false)
-      .whereType<File>()
-      .map((f) => f.path)
-      .where(_isFormattable)
-      .toList()
-    ..sort();
+  final files =
+      Directory.current
+          .listSync(recursive: true, followLinks: false)
+          .whereType<File>()
+          .map((f) => f.path)
+          .where(_isFormattable)
+          .toList()
+        ..sort();
 
   stdout.writeln(files.join('\n'));
 }

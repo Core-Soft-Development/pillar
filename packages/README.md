@@ -28,8 +28,9 @@ packages/
 └── pillar/                               # tier 4 — the BoM
 ```
 
-The folder name always matches the package name, in `snake_case`. `melos.yaml`
-globs `packages/**`, so nesting needs no configuration.
+The folder name always matches the package name, in `snake_case`. Each package
+is listed under `workspace:` in the root pubspec and declares
+`resolution: workspace`.
 
 ## Tiers and the rules between them
 
@@ -81,9 +82,8 @@ implementation and releases it on their own schedule.
      pillar_core: ^1.0.0
    ```
 
-   `melos bootstrap` writes the local `path:` into a generated
-   `pubspec_overrides.yaml`, which is gitignored. A bare `path:` dependency
-   makes the package unpublishable on pub.dev.
+   The pub workspace resolves that to the local package automatically. A bare
+   `path:` dependency makes the package unpublishable on pub.dev.
 4. Start at `0.1.0` while the API is still moving.
    Keep it pure Dart unless it genuinely renders something: a tier-1 interface
    that depends on Flutter forces every consumer of that domain to.

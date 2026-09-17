@@ -21,10 +21,10 @@ sealed class PillarDiError extends Error {
 final class DependencyNotFoundError extends PillarDiError {
   /// Creates the error for the unresolved [dependency].
   DependencyNotFoundError(this.dependency, List<String> registered)
-      : super(
-          'nothing is registered for $dependency.\n'
-          "Registered here: ${registered.isEmpty ? '<empty container>' : registered.join(', ')}",
-        );
+    : super(
+        'nothing is registered for $dependency.\n'
+        "Registered here: ${registered.isEmpty ? '<empty container>' : registered.join(', ')}",
+      );
 
   /// The dependency that could not be resolved, as `Type` or `Type('name')`.
   final String dependency;
@@ -38,10 +38,10 @@ final class DependencyNotFoundError extends PillarDiError {
 final class DependencyAlreadyRegisteredError extends PillarDiError {
   /// Creates the error for the duplicate [dependency].
   DependencyAlreadyRegisteredError(this.dependency)
-      : super(
-          '$dependency is already registered in this container.\n'
-          'Open a scope and register the replacement there, or unregister first.',
-        );
+    : super(
+        '$dependency is already registered in this container.\n'
+        'Open a scope and register the replacement there, or unregister first.',
+      );
 
   /// The dependency that was registered twice.
   final String dependency;
@@ -67,10 +67,10 @@ final class CircularDependencyError extends PillarDiError {
 final class DependencyNotReadyError extends PillarDiError {
   /// Creates the error for the unresolved asynchronous [dependency].
   DependencyNotReadyError(this.dependency)
-      : super(
-          '$dependency is registered asynchronously and has not resolved yet.\n'
-          'Await container.ready() at startup, or read it with getAsync().',
-        );
+    : super(
+        '$dependency is registered asynchronously and has not resolved yet.\n'
+        'Await container.ready() at startup, or read it with getAsync().',
+      );
 
   /// The dependency that is not ready yet.
   final String dependency;

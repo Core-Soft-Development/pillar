@@ -16,9 +16,7 @@ abstract interface class RemoteConfigRepository implements BaseRepository {
 /// Implementation of remote config repository
 class RemoteConfigRepositoryImpl implements RemoteConfigRepository {
   /// Constructor for RemoteConfigRepositoryImpl
-  const RemoteConfigRepositoryImpl({
-    required this.service,
-  });
+  const RemoteConfigRepositoryImpl({required this.service});
 
   /// Service for remote configuration operations
   final RemoteConfigService service;

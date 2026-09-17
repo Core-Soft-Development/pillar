@@ -21,11 +21,7 @@ import 'package:pillar_core/pillar_core.dart';
 /// different key.
 class PillarScope extends InheritedWidget {
   /// Exposes [container] to [child] and its descendants.
-  const PillarScope({
-    required this.container,
-    required super.child,
-    super.key,
-  });
+  const PillarScope({required this.container, required super.child, super.key});
 
   /// The container descendants resolve from.
   final PillarContainer container;

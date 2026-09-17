@@ -32,10 +32,7 @@ Future<void> main(List<String> args) async {
   final released = <String, String>{};
 
   for (final tag in tags) {
-    final package = packages.keys.firstWhere(
-      (name) => tag == '$name-v${packages[name]}',
-      orElse: () => '',
-    );
+    final package = packages.keys.firstWhere((name) => tag == '$name-v${packages[name]}', orElse: () => '');
     if (package.isEmpty) {
       stdout.writeln('Skipping $tag: no package matches it.');
       continue;
@@ -48,12 +45,7 @@ Future<void> main(List<String> args) async {
     final version = packages[package]!;
     final notes = _changelogSection(package, version) ?? 'See CHANGELOG.md for details.';
 
-    await _createRelease(
-      tag: tag,
-      title: '$package v$version',
-      body: notes,
-      dryRun: dryRun,
-    );
+    await _createRelease(tag: tag, title: '$package v$version', body: notes, dryRun: dryRun);
     released[package] = version;
   }
 
@@ -107,9 +99,7 @@ String? _changelogSection(String package, String version) {
   final lines = file.readAsLinesSync();
   final heading = RegExp(r'^(#{1,6})\s');
 
-  final start = lines.indexWhere(
-    (l) => heading.hasMatch(l) && l.contains(version),
-  );
+  final start = lines.indexWhere((l) => heading.hasMatch(l) && l.contains(version));
   if (start == -1) return null;
 
   // Stop at the next heading of the same level or higher. Stopping at any
@@ -159,16 +149,7 @@ Future<void> _createRelease({
   }
 
   final notes = File('${Directory.systemTemp.path}/$tag.md')..writeAsStringSync(body);
-  await _run('gh', [
-    'release',
-    'create',
-    tag,
-    '--title',
-    title,
-    '--notes-file',
-    notes.path,
-    '--verify-tag',
-  ]);
+  await _run('gh', ['release', 'create', tag, '--title', title, '--notes-file', notes.path, '--verify-tag']);
   stdout.writeln('Created release $tag');
 }
 

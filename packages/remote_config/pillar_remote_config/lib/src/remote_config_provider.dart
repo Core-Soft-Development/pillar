@@ -4,9 +4,7 @@ import 'package:pillar_remote_config/src/remote_config_repository.dart';
 /// Provider for remote configuration management
 class RemoteConfigProvider extends BaseProvider {
   /// Constructor for RemoteConfigProvider
-  RemoteConfigProvider({
-    required this.repository,
-  });
+  RemoteConfigProvider({required this.repository});
 
   /// Repository for remote configuration operations
   final RemoteConfigRepository repository;
@@ -22,22 +20,18 @@ class RemoteConfigProvider extends BaseProvider {
 
   /// Refresh configurations from remote source
   Future<void> refreshConfigs() async {
-    await executeAsync<bool>(
-      () async {
-        final success = await repository.refreshConfig();
-        if (success) {
-          _configs = await repository.getAllConfigs();
-        }
-        return success;
-      },
-    );
+    await executeAsync<bool>(() async {
+      final success = await repository.refreshConfig();
+      if (success) {
+        _configs = await repository.getAllConfigs();
+      }
+      return success;
+    });
   }
 
   /// Load a specific configuration
   Future<void> loadConfig<T>(String key) async {
-    final value = await executeAsync<T?>(
-      () => repository.getConfig<T>(key),
-    );
+    final value = await executeAsync<T?>(() => repository.getConfig<T>(key));
 
     if (value != null) {
       _configs[key] = value;

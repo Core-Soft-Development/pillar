@@ -65,8 +65,7 @@ pillar/
 ├── packages/           # All Flutter packages, grouped by domain
 ├── docs/              # Documentation
 ├── scripts/           # Build and utility scripts
-├── melos.yaml         # Melos configuration
-├── pubspec.yaml       # Root pubspec
+├── pubspec.yaml       # Workspace + melos configuration
 └── analysis_options.yaml # Dart analysis configuration
 ```
 

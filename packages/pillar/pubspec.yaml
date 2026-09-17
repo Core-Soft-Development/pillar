@@ -5,7 +5,7 @@
 # would guarantee nothing; the point is a set that CI released together.
 name: pillar
 description: Bill of Materials for the Pillar framework — pins one compatible, released set of pillar_* package versions.
-version: 2026.09.2
+version: 2026.09.0
 homepage: https://github.com/Core-Soft-Development/pillar
 repository: https://github.com/Core-Soft-Development/pillar
 issue_tracker: https://github.com/Core-Soft-Development/pillar/issues
@@ -13,6 +13,10 @@ issue_tracker: https://github.com/Core-Soft-Development/pillar/issues
 environment:
   sdk: ">=3.12.0 <4.0.0"
   flutter: ">=3.44.0"
+
+# The BoM is a workspace member like any other package; without this, the next
+# sync would silently drop it out of the workspace resolution.
+resolution: workspace
 
 dependencies:
   pillar_core: 1.0.0

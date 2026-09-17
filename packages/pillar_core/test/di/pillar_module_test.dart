@@ -40,10 +40,7 @@ final class AsyncModule extends PillarModule {
 
   @override
   void register(PillarContainer container) {
-    container.registerAsyncSingleton<Binding>(
-      (_) async => const Binding('awaited'),
-      name: 'async',
-    );
+    container.registerAsyncSingleton<Binding>((_) async => const Binding('awaited'), name: 'async');
   }
 }
 
@@ -89,10 +86,7 @@ void main() {
   });
 
   test('an explicitly passed module beats the one a dependency would supply', () async {
-    await installModules(container, [
-      const FeatureModule(),
-      const CoreModule('configured'),
-    ]);
+    await installModules(container, [const FeatureModule(), const CoreModule('configured')]);
 
     expect(
       container.get<Downstream>().binding.origin,
@@ -110,13 +104,7 @@ void main() {
   test('a cycle between modules is reported as the path that produced it', () {
     expect(
       () => installModules(container, [const CycleA()]),
-      throwsA(
-        isA<ModuleCycleError>().having(
-          (e) => e.chain,
-          'chain',
-          ['CycleA', 'CycleB', 'CycleA'],
-        ),
-      ),
+      throwsA(isA<ModuleCycleError>().having((e) => e.chain, 'chain', ['CycleA', 'CycleB', 'CycleA'])),
     );
   });
 }

@@ -17,9 +17,9 @@ void main() {
   tearDown(() => container.dispose());
 
   Widget scoped(Widget child) => Directionality(
-        textDirection: TextDirection.ltr,
-        child: PillarScope(container: container, child: child),
-      );
+    textDirection: TextDirection.ltr,
+    child: PillarScope(container: container, child: child),
+  );
 
   testWidgets('of() returns the container of the enclosing scope', (tester) async {
     late PillarContainer resolved;

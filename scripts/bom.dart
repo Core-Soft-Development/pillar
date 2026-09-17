@@ -70,9 +70,7 @@ Future<Map<String, String>> _publishedPackages() async {
   final entries = (await melosJson(['list', '--json', '--no-private'])) as List;
   final packages = entries.cast<Map<String, dynamic>>().where((p) => p['name'] != bomName);
 
-  return {
-    for (final p in packages) p['name'] as String: p['version'] as String,
-  }..removeWhere((_, v) => v.isEmpty);
+  return {for (final p in packages) p['name'] as String: p['version'] as String}..removeWhere((_, v) => v.isEmpty);
 }
 
 /// `YYYY.MM.N` — N resets when the month changes, increments within it.
@@ -96,9 +94,7 @@ Map<String, String> _parsePins(String? pubspec) {
 
   final body = pubspec.substring(deps.end);
   final entry = RegExp(r'^  (pillar_\w+):\s*(\S+)\s*$', multiLine: true);
-  return {
-    for (final m in entry.allMatches(body)) m.group(1)!: m.group(2)!,
-  };
+  return {for (final m in entry.allMatches(body)) m.group(1)!: m.group(2)!};
 }
 
 bool _sameSet(Map<String, String> a, Map<String, String> b) =>
@@ -143,6 +139,10 @@ repository: https://github.com/Core-Soft-Development/pillar
 issue_tracker: https://github.com/Core-Soft-Development/pillar/issues
 
 ${_environmentBlock()}
+
+# The BoM is a workspace member like any other package; without this, the next
+# sync would silently drop it out of the workspace resolution.
+resolution: workspace
 
 dependencies:
 $pins

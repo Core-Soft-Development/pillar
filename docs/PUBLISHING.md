@@ -55,8 +55,7 @@ than the release:
 
 - no `publish_to: none` (that was why `pillar_remote_config` could never ship)
 - **no `path:` dependency** — pub.dev rejects them. Depend on siblings by
-  version constraint; `melos bootstrap` supplies the local path through a
-  generated `pubspec_overrides.yaml`:
+  version constraint; the pub workspace resolves it to the local package:
 
   ```yaml
   dependencies:

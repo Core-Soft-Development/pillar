@@ -53,18 +53,10 @@ abstract interface class PillarContainer {
   void registerFactory<T extends Object>(PillarFactory<T> create, {String? name});
 
   /// Registers an already-built [instance] as the single instance of [T].
-  void registerSingleton<T extends Object>(
-    T instance, {
-    String? name,
-    PillarDisposer<T>? dispose,
-  });
+  void registerSingleton<T extends Object>(T instance, {String? name, PillarDisposer<T>? dispose});
 
   /// Registers a singleton built on first access.
-  void registerLazySingleton<T extends Object>(
-    PillarFactory<T> create, {
-    String? name,
-    PillarDisposer<T>? dispose,
-  });
+  void registerLazySingleton<T extends Object>(PillarFactory<T> create, {String? name, PillarDisposer<T>? dispose});
 
   /// Registers a singleton built asynchronously.
   ///
@@ -172,9 +164,7 @@ final class _Registration {
 }
 
 final class _Container implements PillarContainer {
-  _Container.root()
-      : _parent = null,
-        _name = null;
+  _Container.root() : _parent = null, _name = null;
 
   _Container._scope(this._parent, this._name);
 
@@ -215,11 +205,7 @@ final class _Container implements PillarContainer {
   }
 
   @override
-  void registerLazySingleton<T extends Object>(
-    PillarFactory<T> create, {
-    String? name,
-    PillarDisposer<T>? dispose,
-  }) {
+  void registerLazySingleton<T extends Object>(PillarFactory<T> create, {String? name, PillarDisposer<T>? dispose}) {
     _put(
       _Key(T, name),
       _Registration(
@@ -401,11 +387,13 @@ final class _Container implements PillarContainer {
     if (pending != null) return pending;
 
     final previous = _enter(key);
-    final future = Future<Object>(() => registration.createAsync!(this)).then((instance) {
-      registration.instance = instance;
-      registration.pending = null;
-      return instance;
-    }).whenComplete(() => _chain = previous);
+    final future = Future<Object>(() => registration.createAsync!(this))
+        .then((instance) {
+          registration.instance = instance;
+          registration.pending = null;
+          return instance;
+        })
+        .whenComplete(() => _chain = previous);
 
     return registration.pending = future;
   }

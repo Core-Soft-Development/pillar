@@ -21,10 +21,7 @@ class ExampleApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'pillar_flutter',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
+      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple), useMaterial3: true),
       home: const ExamplePage(),
     );
   }
@@ -65,10 +62,7 @@ class _ExamplePageState extends State<ExamplePage> {
               builder: (context, _) {
                 if (_presenter.isLoading) return const CircularProgressIndicator();
                 if (_presenter.hasError) {
-                  return Text(
-                    _presenter.error!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
-                  );
+                  return Text(_presenter.error!, style: TextStyle(color: Theme.of(context).colorScheme.error));
                 }
                 return Text(_presenter.data ?? 'Nothing loaded yet');
               },

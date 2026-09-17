@@ -9,20 +9,24 @@ environment:
   sdk: ">=3.12.0 <4.0.0"
   flutter: ">=3.44.0"
 
+# Resolved as part of the workspace declared in the root pubspec:
+# one lockfile and one .dart_tool for the whole repo.
+resolution: workspace
+
 dependencies:
   firebase_remote_config: ^4.4.0
   flutter:
     sdk: flutter
   meta: ^1.12.0
   # Version constraint, not a path: pub.dev rejects path dependencies.
-  # `melos bootstrap` writes the local path into pubspec_overrides.yaml.
+  # The pub workspace resolves this to the local package.
   pillar_core: ^1.0.0
   # BaseProvider is a ChangeNotifier, so it lives in the Flutter binding rather
   # than in pure-Dart pillar_core.
   pillar_flutter: ^1.0.0
 
 dev_dependencies:
-  flutter_lints: ^4.0.0
+  flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
   mocktail: ^1.0.4

@@ -30,7 +30,7 @@ A trailing `!` (or a `BREAKING CHANGE:` footer) is what makes a major.
 
 Packages that depend on a bumped package have their constraints updated
 automatically, and get a patch bump of their own — `updateDependentsConstraints`
-and `updateDependentsVersionConstraints` in `melos.yaml`.
+and `updateDependentsVersionConstraints`, under `melos:` in the root pubspec.
 
 ## Commands
 

@@ -145,8 +145,7 @@ yarn-error.log*
 
 # FVM Version Cache
 .fvm/
-# Melos — generated at bootstrap, never commit
+# Pub workspace: resolution happens at the root, so member packages have
+# neither a lockfile nor the pubspec_overrides.yaml melos used to generate.
 pubspec_overrides.yaml
-
-# Packages and their examples are libraries/showcases, not deployed apps:
 packages/**/pubspec.lock

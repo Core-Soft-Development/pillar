@@ -33,16 +33,17 @@ dependencies:
 Melos configuration handles publication automatically:
 
 ```yaml
-# melos.yaml
-command:
-  version:
-    updateDependentsVersionConstraints: true
-    updateDependentsConstraints: true
+# pubspec.yaml (root)
+melos:
+  command:
+    version:
+      updateDependentsVersionConstraints: true
+      updateDependentsConstraints: true
 ```
 
 **How it works:**
-1. **During versioning** - Melos detects path dependencies
-2. **Converts automatically** - Path deps become version constraints
+1. **During versioning** - Melos finds every package depending on the bumped one
+2. **Updates constraints** - Their version ranges are rewritten to match
 3. **Updates dependents** - Downstream packages get correct version ranges
 4. **Publishes in order** - Dependencies first, then dependents
 
@@ -105,27 +106,41 @@ melos bootstrap
 melos test
 
 # 4. When ready to publish
-melos version --minor
-# Melos automatically converts to: pillar_core: ^1.0.0
+melos version pillar_core minor --yes
+# Dependents are rewritten to: pillar_core: ^1.1.0
 ```
 
 ## 🔧 Technical Implementation
 
-### pubspec_overrides.yaml (Automatic)
+### Pub workspace resolution
 
-Melos creates override files during bootstrap:
+The repo is a [pub workspace](https://dart.dev/tools/pub/workspaces): the root
+pubspec lists its members under `workspace:`, and each package declares
+`resolution: workspace`.
 
 ```yaml
-# packages/remote_config/pillar_remote_config/pubspec_overrides.yaml (auto-generated)
-dependency_overrides:
-  pillar_core:
-    path: ../pillar_core
+# pubspec.yaml (root)
+workspace:
+  - packages/pillar_core
+  - packages/remote_config/pillar_remote_config
 ```
 
-**Purpose:**
-- Ensures local development uses path dependencies
-- Doesn't interfere with publication
-- Automatically managed by Melos
+```yaml
+# packages/remote_config/pillar_remote_config/pubspec.yaml
+resolution: workspace
+
+dependencies:
+  pillar_core: ^1.0.0     # resolved to the local package
+```
+
+**What this gives you:**
+- One `pubspec.lock` and one `.dart_tool/` for the whole repo, not one per package
+- Sibling packages resolve locally from a plain version constraint
+- No generated `pubspec_overrides.yaml` to commit, ignore, or conflict on
+
+Before pub workspaces existed, melos emulated this by writing a
+`pubspec_overrides.yaml` into each package (`usePubspecOverrides: true`). That
+mechanism is gone; the SDK does it natively.
 
 ### Version Constraint Updates
 
@@ -157,14 +172,12 @@ Melos automatically determines publication order:
 ### Melos Configuration
 
 ```yaml
-# melos.yaml
-command:
-  bootstrap:
-    usePubspecOverrides: true  # Enable override files
-  
-  version:
-    updateDependentsVersionConstraints: true  # Update version ranges
-    updateDependentsConstraints: true         # Update all constraints
+# pubspec.yaml (root) — melos reads its config from here in a workspace
+melos:
+  command:
+    version:
+      updateDependentsVersionConstraints: true  # Update version ranges
+      updateDependentsConstraints: true         # Update all constraints
 ```
 
 ### Analysis Configuration

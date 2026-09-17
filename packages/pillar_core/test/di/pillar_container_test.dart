@@ -111,13 +111,7 @@ void main() {
 
       expect(
         () => container.get<Clock>(),
-        throwsA(
-          isA<CircularDependencyError>().having(
-            (e) => e.chain,
-            'chain',
-            ['Clock', 'Service', 'Clock'],
-          ),
-        ),
+        throwsA(isA<CircularDependencyError>().having((e) => e.chain, 'chain', ['Clock', 'Service', 'Clock'])),
       );
     });
 
@@ -136,10 +130,7 @@ void main() {
     test('a disposed container refuses further use', () async {
       await container.dispose();
 
-      expect(
-        () => container.registerSingleton<Clock>(const Clock('late')),
-        throwsA(isA<ContainerDisposedError>()),
-      );
+      expect(() => container.registerSingleton<Clock>(const Clock('late')), throwsA(isA<ContainerDisposedError>()));
     });
   });
 
@@ -154,13 +145,10 @@ void main() {
 
     test('a lazy one stays unresolved until getAsync asks for it', () async {
       var built = 0;
-      container.registerAsyncSingleton<Clock>(
-        (_) async {
-          built++;
-          return const Clock('on demand');
-        },
-        eager: false,
-      );
+      container.registerAsyncSingleton<Clock>((_) async {
+        built++;
+        return const Clock('on demand');
+      }, eager: false);
 
       await container.ready();
       expect(built, 0);
@@ -170,14 +158,11 @@ void main() {
 
     test('concurrent resolutions share one future', () async {
       var built = 0;
-      container.registerAsyncSingleton<Clock>(
-        (_) async {
-          built++;
-          await Future<void>.delayed(const Duration(milliseconds: 10));
-          return const Clock('once');
-        },
-        eager: false,
-      );
+      container.registerAsyncSingleton<Clock>((_) async {
+        built++;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        return const Clock('once');
+      }, eager: false);
 
       await Future.wait([container.getAsync<Clock>(), container.getAsync<Clock>()]);
       expect(built, 1);
@@ -259,14 +244,8 @@ void main() {
 
     test('disposing a container disposes its scopes first', () async {
       final order = <String>[];
-      container.registerSingleton<Clock>(
-        const Clock('root'),
-        dispose: (_) => order.add('root'),
-      );
-      container.openScope().registerSingleton<Clock>(
-            const Clock('scoped'),
-            dispose: (_) => order.add('scope'),
-          );
+      container.registerSingleton<Clock>(const Clock('root'), dispose: (_) => order.add('root'));
+      container.openScope().registerSingleton<Clock>(const Clock('scoped'), dispose: (_) => order.add('scope'));
 
       await container.dispose();
       expect(order, ['scope', 'root']);
@@ -286,10 +265,7 @@ void main() {
 
     test('a lazy singleton that was never built is not disposed', () async {
       var disposed = false;
-      container.registerLazySingleton<Service>(
-        (_) => Service(const Clock('a')),
-        dispose: (_) => disposed = true,
-      );
+      container.registerLazySingleton<Service>((_) => Service(const Clock('a')), dispose: (_) => disposed = true);
 
       await container.dispose();
       expect(disposed, isFalse);
@@ -317,10 +293,7 @@ void main() {
 
       expect(service.closed, isTrue);
       expect(container.isRegistered<Service>(), isFalse);
-      expect(
-        () => container.registerSingleton<Service>(Service(const Clock('b'))),
-        returnsNormally,
-      );
+      expect(() => container.registerSingleton<Service>(Service(const Clock('b'))), returnsNormally);
     });
 
     test('unregister does not reach into an enclosing scope', () async {
