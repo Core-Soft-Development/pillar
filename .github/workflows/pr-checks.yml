@@ -105,7 +105,7 @@ jobs:
       # Asks pub.dev to validate every package before the merge, rather than
       # discovering a rejection during the release, once tags are in flight.
       - name: Ask pub.dev to validate every package
-        run: melos run publish:dry-run
+        run: melos run release:rehearse
 
       - name: Check the BoM is in sync
         run: melos run bom:verify

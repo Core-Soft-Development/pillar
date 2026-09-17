@@ -145,7 +145,11 @@ melos:
       run: dart run scripts/bom.dart verify
       description: Fail if the BoM has drifted from published package versions.
 
-    # --- versioning ------------------------------------------------------------
+    # --- release ---------------------------------------------------------------
+  #
+  # These are prefixed `release:` because melos 8 treats `melos <script>` as a
+  # shorthand for `melos run <script>`: a script named `publish` shadows the
+  # built-in `melos publish`, and any script calling it recurses into itself.
     #
     # `melos version` reads conventional commits and bumps each package on its
     # own. There is no lockstep bump: that is what the BoM is for.
@@ -153,13 +157,13 @@ melos:
     # Note: melos's `--all` means "include private packages", NOT "every
     # package". It is deliberately absent below.
 
-    version:
+    release:version:
       run: melos version --yes --ignore="pillar"
       description: |
         Version changed packages from their conventional commits, writing
         changelogs and creating local <package>-v<version> tags. Does not push.
 
-    version:preview:
+    release:preview:
       run: |
         melos version --yes --ignore="pillar" \
           --no-git-tag-version --no-git-commit-version
@@ -175,31 +179,31 @@ melos:
     #
     #   melos version pillar_core minor --yes
 
-    version:prerelease:
+    release:prerelease:
       run: melos version --yes --ignore="pillar" --prerelease --preid beta
       description: |
         Cut a beta prerelease (1.2.0-beta.0). --preid takes a prerelease
         identifier such as beta or rc — it is not a bump level.
 
-    version:graduate:
+    release:graduate:
       run: melos version --yes --ignore="pillar" --graduate
       description: Promote prerelease versions to stable.
 
     # --- publishing ------------------------------------------------------------
 
-    publish:dry-run:
+    release:rehearse:
       run: melos publish --yes --ignore="pillar"
       description: |
         Ask pub.dev to validate every package without publishing. This is the
         rehearsal that has to pass before a release writes anything to git.
 
-    publish:
+    release:publish:
       run: melos publish --no-dry-run --yes --ignore="pillar"
       description: |
         Publish packages to pub.dev in topological order. The BoM is published
         separately, after its pins have been synced to what actually landed.
 
-    publish:bom:
+    release:publish-bom:
       run: melos publish --no-dry-run --yes --scope="pillar"
       description: Publish the BoM. Runs last — its pins must already exist on pub.dev.
 
@@ -222,11 +226,11 @@ melos:
         # Nothing here is idempotent past the publish step. Stopping at the
         # first failure is what keeps a half-finished release from continuing.
         set -e
-        melos run version
-        melos run publish:dry-run
-        melos run publish
+        melos run release:version
+        melos run release:rehearse
+        melos run release:publish
         melos run bom:sync
-        melos run publish:bom
+        melos run release:publish-bom
       description: |
         The release sequence, in the order that makes it atomic: version locally,
         rehearse against pub.dev, publish, then sync the BoM. Pushing tags is the

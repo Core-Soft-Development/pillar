@@ -35,11 +35,11 @@ and `updateDependentsVersionConstraints`, under `melos:` in the root pubspec.
 ## Commands
 
 ```bash
-melos run version:preview   # what would be released, without committing
-melos run version           # bump, write changelogs, tag locally
+melos run release:preview   # what would be released, without committing
+melos run release:version           # bump, write changelogs, tag locally
 ```
 
-`melos run version` does **not** push. It leaves a commit and one
+`melos run release:version` does **not** push. It leaves a commit and one
 `<package>-v<version>` tag per bumped package on the current branch. In CI,
 those tags only leave the runner once pub.dev has accepted every package —
 see [PUBLISHING.md](./PUBLISHING.md).
@@ -56,8 +56,8 @@ melos version pillar_core minor --yes
 ### Prereleases
 
 ```bash
-melos run version:prerelease   # 1.2.0 -> 1.2.1-beta.0
-melos run version:graduate     # 1.2.1-beta.3 -> 1.2.1
+melos run release:prerelease   # 1.2.0 -> 1.2.1-beta.0
+melos run release:graduate     # 1.2.1-beta.3 -> 1.2.1
 ```
 
 `--preid` names the prerelease identifier (`beta`, `rc`). It is **not** a bump

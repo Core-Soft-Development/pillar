@@ -88,10 +88,10 @@ set that was released together. Same model as Firebase.
 
 ```bash
 # What would the next release version?
-melos run version:preview
+melos run release:preview
 
 # Ask pub.dev to validate every package, without publishing
-melos run publish:dry-run
+melos run release:rehearse
 
 # Inspect the dependency graph
 melos run deps:graph

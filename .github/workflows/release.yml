@@ -85,9 +85,9 @@ jobs:
 
           before="$(git rev-parse HEAD)"
           case "${{ inputs.mode || 'stable' }}" in
-            prerelease) melos run version:prerelease ;;
-            graduate)   melos run version:graduate ;;
-            *)          melos run version ;;
+            prerelease) melos run release:prerelease ;;
+            graduate)   melos run release:graduate ;;
+            *)          melos run release:version ;;
           esac
           after="$(git rev-parse HEAD)"
 
@@ -136,7 +136,7 @@ jobs:
 
       - name: Rehearse the publish (dry run)
         if: steps.version.outputs.released == 'true'
-        run: melos run publish:dry-run
+        run: melos run release:rehearse
 
       # --- 4. publish --------------------------------------------------------
       # No `|| true`, no continue-on-error: a failed publish must fail the job
@@ -144,7 +144,7 @@ jobs:
 
       - name: Publish to pub.dev
         if: steps.version.outputs.released == 'true' && inputs.dry_run != true
-        run: melos run publish
+        run: melos run release:publish
 
       - name: Sync and publish the BoM
         if: steps.version.outputs.released == 'true' && inputs.dry_run != true
@@ -158,7 +158,7 @@ jobs:
           git tag "pillar-v${bom_version}" -m "pillar BoM ${bom_version}"
 
           # Published last: its pins must already resolve on pub.dev.
-          melos run publish:bom
+          melos run release:publish-bom
 
       # --- 5. push -----------------------------------------------------------
       # Only now, once every package is live, do the version commit and its

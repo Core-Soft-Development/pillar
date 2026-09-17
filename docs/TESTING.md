@@ -5,40 +5,36 @@ This guide explains the testing strategy and available test scripts for the Pill
 ## 📋 Available Test Scripts
 
 ### `melos run test`
-**Default test script** - Runs tests for all packages except examples.
-```bash
-melos run test
-```
-- ✅ Excludes example applications (which may not have tests)
-- ✅ Fast execution by ignoring non-essential packages
-- ✅ Recommended for CI/CD pipelines
 
-### `melos run test`
-**Comprehensive testing** - Runs tests only for packages that have a `test/` directory.
+Runs `flutter test` in every package that has a `test/` directory. Packages
+without one are skipped rather than failing.
+
 ```bash
 melos run test
 ```
-- ✅ Automatically detects packages with tests
-- ✅ Skips packages without test directories
-- ✅ Safe for all scenarios
 
 ### `melos run test:coverage`
-**Inclusive testing** - Attempts to run tests for all packages with error tolerance.
+
+The same, with `--coverage`, writing `<package>/coverage/lcov.info`. Runs in
+`extended-checks.yml` rather than on every pull request.
+
 ```bash
 melos run test:coverage
 ```
-- ⚠️ May show errors for packages without tests
-- ✅ Continues execution even if some packages fail
-- 🔍 Useful for debugging test coverage
 
-### `melos run test:integration`
-**Integration tests** - Runs integration tests across packages.
+### `melos run ci:verify`
+
+Analyze, format check, dependency-graph validation and tests — exactly what a
+pull request runs, so you can reproduce a CI failure locally.
+
 ```bash
-melos run test:integration
+melos run ci:verify
 ```
-- 🧪 Runs `flutter test integration_test`
-- 🔗 Tests inter-package interactions
-- 🚀 End-to-end testing scenarios
+
+There is no integration-test script: no package ships an `integration_test/`
+directory yet. Add one alongside the first package that needs it, rather than
+carrying a script that runs nothing.
+
 
 ## 📦 Package Testing Strategy
 

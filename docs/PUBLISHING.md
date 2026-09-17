@@ -86,10 +86,10 @@ settings, so that reaching pub.dev takes a human approval.
 Rarely necessary, and it bypasses the ordering above.
 
 ```bash
-melos run publish:dry-run   # always first
-melos run publish
+melos run release:rehearse   # always first
+melos run release:publish
 melos run bom:sync
-melos run publish:bom       # last: its pins must already resolve
+melos run release:publish-bom       # last: its pins must already resolve
 ```
 
 `melos publish` defaults to a dry run — the `publish` script passes
