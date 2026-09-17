@@ -145,3 +145,9 @@ yarn-error.log*
 
 # FVM Version Cache
 .fvm/
+# Melos — generated at bootstrap, never commit
+pubspec_overrides.yaml
+
+# Library packages must not commit their lockfile (apps/examples may)
+packages/**/pubspec.lock
+!packages/**/example/pubspec.lock
