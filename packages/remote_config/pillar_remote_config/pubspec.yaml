@@ -17,6 +17,9 @@ dependencies:
   # Version constraint, not a path: pub.dev rejects path dependencies.
   # `melos bootstrap` writes the local path into pubspec_overrides.yaml.
   pillar_core: ^1.0.0
+  # BaseProvider is a ChangeNotifier, so it lives in the Flutter binding rather
+  # than in pure-Dart pillar_core.
+  pillar_flutter: ^1.0.0
 
 dev_dependencies:
   flutter_lints: ^4.0.0

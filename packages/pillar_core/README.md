@@ -1,402 +1,183 @@
-# Pillar Core
+# pillar_core
 
-A foundational package for Flutter applications following Clean Architecture principles with powerful dependency injection using Provider.
+The foundation every Pillar package builds on: a dependency injector, a module
+system, and the error and layering contracts the rest of the framework shares.
 
-## Features
-
-- 🏗️ **Clean Architecture Foundation**: Pre-built base classes for entities, use cases, repositories, and services
-- 💉 **Dependency Injection**: Comprehensive DI system with Provider integration
-- 🔄 **Lifecycle Management**: Support for factory, singleton, and lazy singleton patterns
-- 🎯 **Type Safety**: Fully typed dependency resolution with compile-time safety
-- 🧪 **Testing Support**: Built-in testing utilities and mocking support
-- 📱 **Flutter Integration**: Seamless integration with Flutter widgets and Provider
-
-## Installation
-
-Add `pillar_core` to your `pubspec.yaml`:
+**Pure Dart.** Nothing here imports Flutter, so the same contracts compile in a
+server, a CLI or a plain `dart test` run. The Flutter bindings live in
+[`pillar_flutter`](../pillar_flutter).
 
 ```yaml
 dependencies:
   pillar_core: ^1.0.0
 ```
 
-## Quick Start
+## The injector
 
-### 1. Setup Dependencies
+Pillar ships its own rather than depending on a third-party locator. Every
+package in the framework registers through this one interface, so it has to sit
+in the package with no dependencies of its own.
 
 ```dart
-import 'package:pillar_core/pillar_core.dart';
+final container = PillarContainer()
+  ..registerLazySingleton<Clock>((_) => const SystemClock())
+  ..registerLazySingleton<AuthService>((c) => AuthService(clock: c.get<Clock>()));
 
-void setupDependencies() {
-  final container = ServiceLocator.container;
+final auth = container.get<AuthService>();
+```
 
-  // Register repositories
-  container.registerLazySingleton<UserRepository>(
-    () => UserRepositoryImpl(),
-  );
+A factory receives the container rather than reaching for a global. That is what
+lets the same registration run unchanged inside a test scope.
 
-  // Register services
-  container.registerLazySingleton<AuthService>(
-    () => AuthServiceImpl(
-      repository: ServiceLocator.get<UserRepository>(),
-    ),
-  );
+### Lifetimes
 
-  // Register providers
-  container.registerFactory<AuthProvider>(
-    () => AuthProvider(
-      service: ServiceLocator.get<AuthService>(),
-    ),
-  );
+| Registration | Instances | Built |
+|---|---|---|
+| `registerFactory` | one per `get` | on demand |
+| `registerSingleton` | one | at registration |
+| `registerLazySingleton` | one | on first `get` |
+| `registerAsyncSingleton` | one | by `ready()`, or on `getAsync` |
+
+Anything that needs to await — a Firebase handle, a platform channel, an opened
+database — is registered asynchronously and resolved once at startup:
+
+```dart
+container.registerAsyncSingleton<Database>(
+  (c) async => Database.open(c.get<Config>().path),
+  dispose: (db) => db.close(),
+);
+
+await container.ready(); // resolves eager async registrations, in order
+container.get<Database>(); // synchronous from here on
+```
+
+Reading one before it has resolved throws `DependencyNotReadyError` rather than
+returning a half-built object.
+
+### Names
+
+Two implementations of one interface coexist under different names — the case a
+framework with swappable vendors runs into immediately.
+
+```dart
+container
+  ..registerSingleton<Cache>(MemoryCache(), name: 'session')
+  ..registerSingleton<Cache>(DiskCache(), name: 'persistent');
+
+container.get<Cache>(name: 'session');
+```
+
+### Scopes
+
+`openScope()` returns a child that reads through to its parent but registers
+locally. It is how a binding is replaced without mutating shared state:
+
+```dart
+final scope = container.openScope()
+  ..registerSingleton<PaymentGateway>(FakeGateway());
+
+scope.get<PaymentGateway>();      // the fake
+container.get<PaymentGateway>();  // untouched
+await scope.dispose();            // releases only what the scope owns
+```
+
+A scope shadows the *binding*, not instances already built from it. Shadowing
+`Clock` after a singleton that depends on it has been constructed changes
+nothing — shadow what you want replaced.
+
+### Disposal
+
+`dispose()` releases scopes first, then runs each disposer in reverse
+registration order, so a dependency outlives whatever depended on it. A lazy
+singleton that was never built is never disposed.
+
+### Errors
+
+Every failure is an `Error`, not an `Exception`: each one reports a wiring
+mistake fixed in code, not a condition a caller recovers from. A cycle is
+reported as the path that produced it — `AuthService -> UserRepository ->
+AuthService` — rather than as a stack overflow.
+
+## Modules
+
+A module is one package's contribution to the graph. Packages ship one instead
+of asking consumers to wire their internals:
+
+```dart
+final class PillarRemoteConfigFirebaseModule extends PillarModule {
+  const PillarRemoteConfigFirebaseModule();
+
+  @override
+  List<PillarModule> get dependencies => const [PillarCoreModule()];
+
+  @override
+  void register(PillarContainer container) {
+    container.registerAsyncSingleton<RemoteConfig>((c) => FirebaseRemoteConfig.open());
+  }
 }
 ```
 
-### 2. Initialize in Your App
+An application names what it wants; order and asynchronous setup follow:
 
 ```dart
-void main() {
-  setupDependencies();
+await installModules(container, [
+  const PillarRemoteConfigFirebaseModule(),
+  const PillarNotificationsFirebaseModule(),
+]);
+```
+
+A module type is installed once however often it appears in the graph, and an
+explicitly passed instance beats the default a dependency would have supplied —
+which is how an application configures a module another package also needs.
+
+Swapping a vendor means swapping one entry in that list. Nothing else changes.
+
+## The global container
+
+`Pillar` wraps a single root container for the common case of one graph per
+process:
+
+```dart
+Future<void> main() async {
+  await Pillar.install([const AppModule()]);
   runApp(const MyApp());
 }
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return DependencyInjectionProvider(
-      child: MaterialApp(
-        home: const HomePage(),
-      ),
-    );
-  }
-}
 ```
 
-### 3. Use Dependencies in Widgets
-
-#### Using the Mixin
-
-```dart
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
-
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> with DependencyInjectionMixin {
-  late final AuthProvider _authProvider;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _authProvider = getDependency<AuthProvider>();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () => _authProvider.login(),
-          child: const Text('Login'),
-        ),
-      ),
-    );
-  }
-}
-```
-
-#### Using Context Extension
-
-```dart
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () {
-            final authService = context.getDependency<AuthService>();
-            authService.login();
-          },
-          child: const Text('Login'),
-        ),
-      ),
-    );
-  }
-}
-```
-
-#### Using Consumer Widgets
-
-```dart
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: DependencyConsumer<AuthProvider>(
-        builder: (context, authProvider, child) {
-          if (authProvider.isLoading) {
-            return const CircularProgressIndicator();
-          }
-          
-          return ElevatedButton(
-            onPressed: () => authProvider.login(),
-            child: const Text('Login'),
-          );
-        },
-      ),
-    );
-  }
-}
-```
-
-## Architecture Layers
-
-### Domain Layer
-
-The domain layer contains the business logic and is framework-independent.
-
-#### Entities
-
-```dart
-import 'package:pillar_core/pillar_core.dart';
-
-class User extends BaseEntity<String> {
-  const User({
-    required this.id,
-    required this.name,
-    required this.email,
-  });
-
-  @override
-  final String id;
-  final String name;
-  final String email;
-}
-```
-
-#### Use Cases
-
-```dart
-import 'package:pillar_core/pillar_core.dart';
-
-class LoginParams extends UseCaseParams {
-  const LoginParams({
-    required this.email,
-    required this.password,
-  });
-
-  final String email;
-  final String password;
-}
-
-class LoginUseCase implements BaseUseCase<User, LoginParams> {
-  const LoginUseCase({
-    required this.repository,
-  });
-
-  final AuthRepository repository;
-
-  @override
-  Future<User> execute(LoginParams params) async {
-    return repository.login(params.email, params.password);
-  }
-}
-```
-
-#### Repositories
-
-```dart
-import 'package:pillar_core/pillar_core.dart';
-
-abstract interface class AuthRepository extends BaseRepository {
-  Future<User> login(String email, String password);
-  Future<void> logout();
-}
-```
-
-### Infrastructure Layer
-
-The infrastructure layer contains implementations of domain interfaces.
-
-#### Repository Implementation
-
-```dart
-import 'package:pillar_core/pillar_core.dart';
-
-class AuthRepositoryImpl implements AuthRepository {
-  @override
-  String get repositoryName => 'AuthRepository';
-
-  @override
-  Future<User> login(String email, String password) async {
-    // Implementation details
-  }
-
-  @override
-  Future<void> logout() async {
-    // Implementation details
-  }
-}
-```
-
-#### Services
-
-```dart
-import 'package:pillar_core/pillar_core.dart';
-
-abstract interface class AuthService extends BaseService {
-  Future<User> login(String email, String password);
-}
-
-class AuthServiceImpl implements AuthService {
-  const AuthServiceImpl({
-    required this.repository,
-  });
-
-  final AuthRepository repository;
-
-  @override
-  String get serviceName => 'AuthService';
-
-  @override
-  Future<User> login(String email, String password) {
-    return repository.login(email, password);
-  }
-}
-```
-
-### Presentation Layer
-
-The presentation layer handles UI state and user interactions.
-
-#### Providers
-
-```dart
-import 'package:pillar_core/pillar_core.dart';
-
-class AuthProvider extends BaseProvider {
-  AuthProvider({
-    required this.service,
-  });
-
-  final AuthService service;
-  User? _user;
-
-  User? get user => _user;
-  bool get isLoggedIn => _user != null;
-
-  Future<void> login(String email, String password) async {
-    final user = await executeAsync<User>(
-      () => service.login(email, password),
-    );
-
-    if (user != null) {
-      _user = user;
-      notifyListeners();
-    }
-  }
-
-  Future<void> logout() async {
-    _user = null;
-    notifyListeners();
-  }
-}
-```
-
-## Dependency Registration Types
-
-### Factory
-
-Creates a new instance every time it's requested:
-
-```dart
-container.registerFactory<Service>(() => ServiceImpl());
-```
-
-### Singleton
-
-Registers a single instance that's shared across the app:
-
-```dart
-final instance = ServiceImpl();
-container.registerSingleton<Service>(instance);
-```
-
-### Lazy Singleton
-
-Creates a single instance when first requested:
-
-```dart
-container.registerLazySingleton<Service>(() => ServiceImpl());
-```
-
-## Error Handling
-
-Pillar Core provides a comprehensive error handling system:
-
-```dart
-try {
-  final result = await useCase.execute(params);
-} on ServerException catch (e) {
-  throw ServerFailure(message: e.message);
-} on NetworkException catch (e) {
-  throw NetworkFailure(message: e.message);
-}
-```
-
-## Testing
-
-Pillar Core is designed with testing in mind:
-
-```dart
-void main() {
-  group('AuthProvider', () {
-    late AuthProvider provider;
-    late MockAuthService mockService;
-
-    setUp(() {
-      mockService = MockAuthService();
-      provider = AuthProvider(service: mockService);
-    });
-
-    test('should login successfully', () async {
-      // Arrange
-      final expectedUser = User(id: '1', name: 'John', email: 'john@example.com');
-      when(() => mockService.login(any(), any()))
-          .thenAnswer((_) async => expectedUser);
-
-      // Act
-      await provider.login('john@example.com', 'password');
-
-      // Assert
-      expect(provider.user, equals(expectedUser));
-      expect(provider.isLoggedIn, isTrue);
-    });
-  });
-}
-```
-
-## Best Practices
-
-1. **Keep the domain layer pure**: Don't import Flutter or external packages in domain entities and use cases
-2. **Use interfaces**: Define contracts in the domain layer and implement them in infrastructure
-3. **Register dependencies at app startup**: Setup all dependencies before running the app
-4. **Use appropriate lifecycles**: Choose between factory, singleton, and lazy singleton based on your needs
-5. **Handle errors gracefully**: Use the provided failure and exception types for consistent error handling
-6. **Test your dependencies**: Use the testing utilities to mock dependencies in tests
-
-## Contributing
-
-Contributions are welcome! Please read the contributing guidelines before submitting PRs.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+Library code should take a `PillarContainer` instead. A package that resolves
+from the global cannot be used twice in one process, and its tests have to reset
+shared state between cases. Pillar's own packages never touch `Pillar` — they
+register through `PillarModule` and resolve from the container handed to their
+factories.
+
+## Clean architecture base classes
+
+`BaseEntity`, `BaseRepository`, `BaseUseCase`, `BaseService`, and the `Failure`
+and `Exception` hierarchies. They carry no dependencies and impose no state
+management; the presentation-layer base class lives in `pillar_flutter`, because
+it needs `ChangeNotifier`.
+
+## Migrating from the Provider-based API
+
+`pillar_core` 1.x wrapped the `provider` package. It no longer does, and the
+widget-facing half moved to `pillar_flutter`.
+
+| Before | Now |
+|---|---|
+| `DependencyContainer` | `PillarContainer` |
+| `ProviderDependencyContainer.instance` | `PillarContainer()`, or `Pillar.container` |
+| `ServiceLocator.get<T>()` | `Pillar.get<T>()` |
+| `registerFactory(() => T())` | `registerFactory((c) => T())` — factories take the container |
+| `DependencyInjectionProvider` | `PillarScope` (`pillar_flutter`) |
+| `context.getDependency<T>()` | `context.get<T>()` (`pillar_flutter`) |
+| `DependencyInjectionMixin` | `context.get<T>()` in `initState` |
+| `BaseProvider` | unchanged, in `pillar_flutter` |
+| `DependencyConsumer`, `DependencySelector` | removed — use `ListenableBuilder` |
+
+The two removed widgets wrapped `Consumer<DependencyContainer>`. A container is
+not a `Listenable`, so neither ever rebuilt on anything.
+
+## Example
+
+[`example/pillar_core_example.dart`](example/pillar_core_example.dart) — modules,
+lifetimes, asynchronous setup and scopes, in a console app.

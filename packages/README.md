@@ -10,6 +10,7 @@ its implementations sit side by side, inside a folder named after the domain.
 ```
 packages/
 ├── pillar_core/                          # tier 0 — the highest-level contracts
+├── pillar_flutter/                       # tier 0b — bindings to one runtime
 │
 ├── remote_config/                        # one folder per domain
 │   ├── pillar_remote_config/             #   tier 1 — the app-facing interface
@@ -35,13 +36,19 @@ globs `packages/**`, so nesting needs no configuration.
 | Tier | What it holds | May depend on |
 |---|---|---|
 | 0 — `pillar_core` | contracts, DI, error types | nothing else in this repo |
-| 1 — `pillar_<domain>` | the public API of one domain | `pillar_core` |
+| 0b — `pillar_flutter` | bindings to one runtime | `pillar_core` |
+| 1 — `pillar_<domain>` | the public API of one domain | `pillar_core`, `pillar_flutter` |
 | 2 — `pillar_<domain>_<vendor>` | one concrete implementation | its own tier-1 interface |
 | 3 — tooling | test harnesses, lints | tier 0 and 1 |
 | 4 — `pillar` | the BoM, no code at all | every published package |
 
-Two rules carry most of the weight:
+Three rules carry most of the weight:
 
+- **`pillar_core` stays pure Dart.** It is the package everything else depends
+  on. The moment it pulls in the Flutter SDK, every interface in the framework
+  does too, and none of them can be used from a server, a CLI or a plain
+  `dart test` run. Whatever needs widgets goes in `pillar_flutter`, which is why
+  that package exists.
 - **An implementation never depends on another implementation.** The moment
   `pillar_notifications_firebase` imports `pillar_snackbar_material`, the
   federated model is gone and consumers can no longer swap one out.
@@ -78,6 +85,8 @@ implementation and releases it on their own schedule.
    `pubspec_overrides.yaml`, which is gitignored. A bare `path:` dependency
    makes the package unpublishable on pub.dev.
 4. Start at `0.1.0` while the API is still moving.
+   Keep it pure Dart unless it genuinely renders something: a tier-1 interface
+   that depends on Flutter forces every consumer of that domain to.
 5. Add `README.md`, `CHANGELOG.md` and `LICENSE`.
 6. Run `melos bootstrap`, then `melos run deps:validate`.
 

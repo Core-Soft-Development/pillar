@@ -5,7 +5,7 @@
 # would guarantee nothing; the point is a set that CI released together.
 name: pillar
 description: Bill of Materials for the Pillar framework — pins one compatible, released set of pillar_* package versions.
-version: 2026.09.0
+version: 2026.09.1
 homepage: https://github.com/Core-Soft-Development/pillar
 repository: https://github.com/Core-Soft-Development/pillar
 issue_tracker: https://github.com/Core-Soft-Development/pillar/issues
@@ -16,4 +16,5 @@ environment:
 
 dependencies:
   pillar_core: 1.0.0
+  pillar_flutter: 1.0.0
   pillar_remote_config: 1.0.0

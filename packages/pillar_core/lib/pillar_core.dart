@@ -1,18 +1,19 @@
-/// Pillar Core - A foundational package for clean architecture and dependency injection
-library pillar_core;
+/// The contracts every Pillar package builds on: dependency injection, error
+/// types, and the base classes of the clean-architecture layers.
+///
+/// Pure Dart on purpose. Nothing here imports Flutter, so the same contracts
+/// compile in a server, a CLI or a plain `dart test` run — and an interface
+/// package never drags a UI toolkit into a consumer that has no use for one.
+/// The Flutter bindings live in `pillar_flutter`.
+library;
 
-// Core exports
-export 'src/core/dependency_injection/dependency_container.dart';
-export 'src/core/dependency_injection/dependency_injection_provider.dart';
-export 'src/core/dependency_injection/provider_dependency_container.dart';
-export 'src/core/dependency_injection/service_locator.dart';
 export 'src/core/errors/exceptions.dart';
 export 'src/core/errors/failures.dart';
-// Domain layer exports
+export 'src/di/di_errors.dart';
+export 'src/di/pillar.dart';
+export 'src/di/pillar_container.dart';
+export 'src/di/pillar_module.dart';
 export 'src/domain/entities/base_entity.dart';
 export 'src/domain/repositories/base_repository.dart';
 export 'src/domain/usecases/base_usecase.dart';
-// Infrastructure layer exports
 export 'src/infrastructure/services/base_service.dart';
-// Presentation layer exports
-export 'src/presentation/providers/base_provider.dart';

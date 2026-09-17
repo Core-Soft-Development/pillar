@@ -1,22 +1,13 @@
 name: pillar_core_example
-description: Example application demonstrating pillar_core usage
+description: Console example for pillar_core — modules, lifetimes and scopes.
 version: 1.0.0
 publish_to: none
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
-  flutter: ">=3.35.0"
 
 dependencies:
-  flutter:
-    sdk: flutter
-  pillar_core:
-    path: ../
+  pillar_core: ^1.0.0
 
 dev_dependencies:
-  flutter_lints: ^4.0.0
-  flutter_test:
-    sdk: flutter
-
-flutter:
-  uses-material-design: true
+  lints: ^5.0.0

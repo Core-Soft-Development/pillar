@@ -1,7 +1,13 @@
 import 'package:flutter/foundation.dart';
 
-/// Base class for all presentation providers
-/// Providers manage UI state and handle user interactions
+/// Base class for presentation-layer state holders.
+///
+/// Holds the loading and error state a screen needs, and runs an asynchronous
+/// operation with both handled ([executeAsync]).
+///
+/// Lives in `pillar_flutter` rather than `pillar_core` because it extends
+/// [ChangeNotifier], which is Flutter's. Register one with
+/// `container.registerFactory<MyProvider>(...)` so each screen gets its own.
 abstract class BaseProvider extends ChangeNotifier {
   /// Constructs a [BaseProvider].
   BaseProvider() : _isDisposed = false;
@@ -22,29 +28,25 @@ abstract class BaseProvider extends ChangeNotifier {
   /// Check if there's an error
   bool get hasError => _error != null;
 
-  /// Set loading state
+  /// Sets the loading state, notifying listeners when it actually changes.
   @protected
   void setLoading(bool loading) {
-    if (_isDisposed) return;
+    if (_isDisposed || _isLoading == loading) return;
     _isLoading = loading;
     notifyListeners();
   }
 
-  /// Set error message
+  /// Sets the error message, notifying listeners when it actually changes.
   @protected
   void setError(String? error) {
-    if (_isDisposed) return;
+    if (_isDisposed || _error == error) return;
     _error = error;
     notifyListeners();
   }
 
-  /// Clear error
+  /// Clears the error, if there is one.
   @protected
-  void clearError() {
-    if (_isDisposed) return;
-    _error = null;
-    notifyListeners();
-  }
+  void clearError() => setError(null);
 
   /// Execute an async operation with loading and error handling
   @protected

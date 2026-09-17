@@ -17,7 +17,8 @@ command:
 
   clean:
     hooks:
-      pre: melos exec -c 1 -- "flutter clean"
+      # pillar_core is pure Dart and has no `flutter clean` to run.
+      pre: melos exec -c 1 --flutter -- "flutter clean"
 
   version:
     # Independent versions: each package is bumped from its own conventional
@@ -55,13 +56,26 @@ scripts:
       dart run scripts/dart_files.dart | xargs dart format --line-length=120 --output=none --set-exit-if-changed
     description: Fail if any file is not formatted. Used by CI.
 
+  # The workspace is mixed: pillar_core is pure Dart, so `flutter test` has
+  # nothing to bind there and fails. Melos filters on the Flutter SDK dependency
+  # and each half runs its own runner.
   test:
-    run: melos exec -c 6 --fail-fast --dir-exists="test" -- flutter test
+    run: |
+      melos exec -c 6 --fail-fast --dir-exists="test" --no-flutter -- dart test
+      melos exec -c 6 --fail-fast --dir-exists="test" --flutter -- flutter test
     description: Run tests for every package that has a test directory.
 
   test:coverage:
-    run: melos exec -c 6 --fail-fast --dir-exists="test" -- flutter test --coverage
-    description: Run tests with coverage, writing <package>/coverage/lcov.info.
+    run: |
+      melos exec -c 6 --fail-fast --dir-exists="test" --no-flutter -- \
+        "dart test --coverage=coverage && \
+         dart run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info \
+           --report-on=lib --packages=.dart_tool/package_config.json"
+      melos exec -c 6 --fail-fast --dir-exists="test" --flutter -- flutter test --coverage
+    description: |
+      Run tests with coverage, writing <package>/coverage/lcov.info. Dart
+      packages emit the VM's own JSON format, so it is converted to lcov here;
+      flutter test writes lcov directly.
 
   build_runner:
     run: |
@@ -95,12 +109,12 @@ scripts:
     description: Print the dependency graph between packages.
 
   deps:check:
-    run: melos exec -- flutter pub outdated
+    run: melos exec -- dart pub outdated
     description: Check for outdated dependencies in every package.
 
   deps:upgrade:
     run: |
-      melos exec -- flutter pub upgrade
+      melos exec -- dart pub upgrade
       melos bootstrap
     description: Upgrade dependencies everywhere, then re-bootstrap.
 

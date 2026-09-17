@@ -1,4 +1,4 @@
-import 'package:pillar_core/pillar_core.dart';
+import 'package:pillar_flutter/pillar_flutter.dart';
 import 'package:pillar_remote_config/src/remote_config_repository.dart';
 
 /// Provider for remote configuration management

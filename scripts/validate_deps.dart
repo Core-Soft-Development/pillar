@@ -13,7 +13,7 @@ import 'melos_json.dart';
 
 /// Where a package sits in the stack. Derived from its path and name, so the
 /// folder layout is the source of truth rather than a hand-kept list.
-enum Tier { bom, core, domain, implementation, tooling, private }
+enum Tier { bom, core, binding, domain, implementation, tooling, private }
 
 class Package {
   Package(this.name, this.path, this.tier, this.domain);
@@ -38,6 +38,9 @@ Future<void> main() async {
     final deps = (graph[p.name] ?? const []).where(packages.containsKey).map((d) => packages[d]!).toList();
 
     _checkLayering(p, deps);
+    if (p.tier == Tier.core) {
+      _checkCoreIsPureDart(p);
+    }
     if (p.tier != Tier.private) {
       _checkPublishable(p);
     }
@@ -71,13 +74,26 @@ void _checkLayering(Package p, List<Package> deps) {
           'but depends on ${d.name}',
         );
 
+      case Tier.binding:
+        // Rule 2: a binding adapts core to one runtime (pillar_flutter) and
+        // must not reach across into a domain — otherwise every consumer of
+        // that domain inherits the runtime.
+        if (d.tier != Tier.core) {
+          violations.add(
+            '[rule 2] ${p.name} is a binding package and may only depend on '
+            'pillar_core, but depends on ${d.name}',
+          );
+        }
+
       case Tier.domain:
-        // Rule 2: an interface knows core, and its own platform interface.
-        final allowed = d.tier == Tier.core || _isPlatformInterfaceOf(d, p);
+        // Rule 2: an interface knows the tier-0 packages, and its own platform
+        // interface. A domain that renders needs pillar_flutter; one that does
+        // not should stay off it, which is a review call rather than a rule.
+        final allowed = d.tier == Tier.core || d.tier == Tier.binding || _isPlatformInterfaceOf(d, p);
         if (!allowed) {
           violations.add(
             '[rule 2] ${p.name} is a domain interface and may only depend on '
-            'pillar_core, but depends on ${d.name}',
+            'pillar_core or pillar_flutter, but depends on ${d.name}',
           );
         }
 
@@ -103,6 +119,36 @@ void _checkLayering(Package p, List<Package> deps) {
   }
 }
 
+/// Rule 7: pillar_core stays pure Dart.
+///
+/// It is the one package every other package depends on. The moment it pulls in
+/// the Flutter SDK, every interface in the framework does too, and none of them
+/// can be used from a server, a CLI, or a plain `dart test` run. The Flutter
+/// bindings live in pillar_flutter for exactly this reason.
+void _checkCoreIsPureDart(Package p) {
+  if (p.pubspec.existsSync()) {
+    final spec = p.pubspec.readAsStringSync();
+    if (RegExp(r'^\s*flutter:', multiLine: true).hasMatch(spec)) {
+      violations.add(
+        '[rule 7] ${p.name} must stay pure Dart, but its pubspec.yaml mentions '
+        'flutter — move whatever needs it to pillar_flutter',
+      );
+    }
+  }
+
+  for (final dir in ['lib', 'test']) {
+    final directory = Directory('${p.path}/$dir');
+    if (!directory.existsSync()) continue;
+    for (final file in directory.listSync(recursive: true).whereType<File>()) {
+      if (!file.path.endsWith('.dart')) continue;
+      if (file.readAsStringSync().contains('package:flutter/')) {
+        final relative = file.path.replaceFirst('${p.path}/', '');
+        violations.add('[rule 7] ${p.name}/$relative imports package:flutter — it must stay pure Dart');
+      }
+    }
+  }
+}
+
 /// Rules 5-6: what pub.dev needs before it will take the package.
 void _checkPublishable(Package p) {
   if (!p.pubspec.existsSync()) return;
@@ -124,7 +170,7 @@ void _checkPublishable(Package p) {
     }
   }
 
-  final description = RegExp(r'^description:\s*(.+)$', multiLine: true).firstMatch(spec)?.group(1)?.trim();
+  final description = _description(spec);
   if (description == null || description.length < 60) {
     violations.add(
       '[rule 6] ${p.name} needs a description of at least 60 characters '
@@ -137,6 +183,28 @@ void _checkPublishable(Package p) {
       violations.add('[rule 6] ${p.name} is missing $file');
     }
   }
+}
+
+/// Reads `description:` from a pubspec, including the folded form
+/// (`description: >-` followed by indented lines), which is how any description
+/// long enough to satisfy rule 6 is actually written.
+String? _description(String spec) {
+  final lines = spec.split('\n');
+  final start = lines.indexWhere((l) => l.startsWith('description:'));
+  if (start == -1) return null;
+
+  final inline = lines[start].substring('description:'.length).trim();
+  if (inline.isNotEmpty && inline != '>' && inline != '>-' && inline != '|' && inline != '|-') {
+    return inline;
+  }
+
+  final folded = <String>[];
+  for (final line in lines.skip(start + 1)) {
+    if (line.trim().isEmpty) break;
+    if (!line.startsWith(' ') && !line.startsWith('\t')) break;
+    folded.add(line.trim());
+  }
+  return folded.isEmpty ? null : folded.join(' ');
 }
 
 /// Rule 4: no cycles. Iterative DFS over the internal graph.
@@ -204,7 +272,9 @@ Tier _tierOf(String name, String path, bool isPrivate) {
   if (name == 'pillar_core') return Tier.core;
 
   final domain = _domainOf(path);
-  if (domain == null) return Tier.tooling;
+  // A published package that sits at the top level rather than inside a domain
+  // folder adapts core to a runtime: pillar_flutter today.
+  if (domain == null) return Tier.binding;
   if (domain == 'testing' || domain == 'tooling') return Tier.tooling;
 
   // pillar_remote_config == the interface; pillar_remote_config_firebase, an

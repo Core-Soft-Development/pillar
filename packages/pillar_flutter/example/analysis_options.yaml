@@ -1,0 +1,8 @@
+# An example is read, not published: it documents itself in prose rather than in
+# dartdoc.
+include: ../../../analysis_options.yaml
+
+linter:
+  rules:
+    diagnostic_describe_all_properties: false
+    public_member_api_docs: false

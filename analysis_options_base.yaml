@@ -1,0 +1,81 @@
+# Rules that hold for every package, Flutter or not.
+#
+# Split out of analysis_options.yaml because pillar_core is pure Dart: it has no
+# flutter_lints to include, so the shared rules had to live somewhere that does
+# not assume a Flutter dependency.
+
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "**/*.gr.dart"
+    - "**/generated_plugin_registrant.dart"
+    - "build/**"
+    - ".dart_tool/**"
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    missing_required_param: warning
+    todo: ignore
+    # The repo formats at 120 columns; the 80-column lint would contradict it.
+    lines_longer_than_80_chars: ignore
+
+linter:
+  rules:
+    # STYLE
+    - camel_case_extensions
+    - camel_case_types
+    - constant_identifier_names
+    - directives_ordering
+    - file_names
+    - library_names
+    - library_prefixes
+    - non_constant_identifier_names
+
+    # DOCUMENTATION
+    # Public API docs are not optional here: these packages are published, and
+    # pana scores documentation coverage.
+    - public_member_api_docs
+    - slash_for_doc_comments
+
+    # USAGE
+    - always_use_package_imports
+    - avoid_empty_else
+    - avoid_print
+    - implementation_imports
+    - prefer_const_constructors
+    - prefer_const_constructors_in_immutables
+    - prefer_const_declarations
+    - prefer_final_fields
+    - prefer_final_in_for_each
+    - prefer_final_locals
+    - prefer_is_empty
+    - prefer_is_not_empty
+    - prefer_single_quotes
+    - require_trailing_commas
+
+    # ERRORS
+    - avoid_dynamic_calls
+    - avoid_type_to_string
+    - cancel_subscriptions
+    - close_sinks
+    - collection_methods_unrelated_type
+    - comment_references
+    - hash_and_equals
+    - literal_only_boolean_expressions
+    - no_adjacent_strings_in_list
+    - no_duplicate_case_values
+    - prefer_void_to_null
+    - test_types_in_equals
+    - throw_in_finally
+    - unnecessary_statements
+    - unrelated_type_equality_checks
+    - valid_regexps
+
+    # PUB
+    - depend_on_referenced_packages
+    - package_names
+    - secure_pubspec_urls
+    - sort_pub_dependencies
