@@ -1,75 +1,91 @@
 # Packages
 
-This directory contains all the Flutter packages that make up the Pillar monorepo.
+Every package published by the Pillar framework lives here, grouped by domain.
 
-## Package Structure
+## Layout
 
-Each package in this directory follows the standard Flutter package structure:
+Packages are organised the way FlutterFire organises its own: an interface and
+its implementations sit side by side, inside a folder named after the domain.
 
 ```
-package_name/
-├── lib/
-│   ├── src/           # Private implementation
-│   └── package_name.dart  # Public API
-├── test/
-├── example/           # Example app (if applicable)
-├── pubspec.yaml
-├── README.md
-└── CHANGELOG.md
+packages/
+├── pillar_core/                          # tier 0 — the highest-level contracts
+│
+├── remote_config/                        # one folder per domain
+│   ├── pillar_remote_config/             #   tier 1 — the app-facing interface
+│   └── pillar_remote_config_firebase/    #   tier 2 — an implementation
+│
+├── notifications/
+│   ├── pillar_notifications/
+│   ├── pillar_notifications_firebase/
+│   └── pillar_notifications_local/
+│
+├── testing/                              # tier 3 — tooling
+│   ├── pillar_test/
+│   └── pillar_golden_test/
+│
+└── pillar/                               # tier 4 — the BoM
 ```
 
-## Creating a New Package
+The folder name always matches the package name, in `snake_case`. `melos.yaml`
+globs `packages/**`, so nesting needs no configuration.
 
-To create a new package:
+## Tiers and the rules between them
 
-1. Create a new directory in this folder
-2. Run `flutter create --template=package package_name` inside the directory
-3. Update the `pubspec.yaml` with appropriate dependencies
-4. Add the package to the root `melos.yaml` (it should be automatically detected)
-5. Run `melos bootstrap` from the root directory
+| Tier | What it holds | May depend on |
+|---|---|---|
+| 0 — `pillar_core` | contracts, DI, error types | nothing else in this repo |
+| 1 — `pillar_<domain>` | the public API of one domain | `pillar_core` |
+| 2 — `pillar_<domain>_<vendor>` | one concrete implementation | its own tier-1 interface |
+| 3 — tooling | test harnesses, lints | tier 0 and 1 |
+| 4 — `pillar` | the BoM, no code at all | every published package |
 
-## Package Types
+Two rules carry most of the weight:
 
-### Core Packages
-- **pillar_core**: Core utilities and base classes
-- **pillar_di**: Dependency injection setup and configuration
-- **pillar_network**: HTTP client and API utilities
+- **An implementation never depends on another implementation.** The moment
+  `pillar_notifications_firebase` imports `pillar_snackbar_material`, the
+  federated model is gone and consumers can no longer swap one out.
+- **An app depends on interfaces, and names an implementation exactly once** —
+  at composition root, where dependencies are registered.
 
-### UI Packages
-- **pillar_ui**: Reusable UI components and widgets
-- **pillar_theme**: Theme configuration and styling
+`melos run deps:validate` enforces both, plus cycle detection, in CI.
 
-### Feature Packages
-- **pillar_auth**: Authentication and user management
-- **pillar_storage**: Local storage and caching utilities
+## Why implementations live in this repo
 
-### Platform Packages
-- **pillar_firebase**: Firebase integration utilities
-- **pillar_analytics**: Analytics and tracking
+They could live in separate repositories. They don't, because:
 
-## Dependencies
+- changing a contract and its implementations is a single PR, reviewed as a unit;
+- the melos dependency graph gives publication its topological order for free;
+- a breaking change surfaces at compile time, in the same CI run that caused it.
 
-When adding dependencies to packages:
+A separate repository is only worth it when a third party owns the
+implementation and releases it on their own schedule.
 
-- Use the minimum required version constraints
-- Prefer dev_dependencies for build tools
-- Keep external dependencies to a minimum
-- Use peer dependencies when appropriate
+## Adding a package
 
-## Testing
+1. Create the folder under its domain (create the domain folder if new).
+2. Copy the `pubspec.yaml` header from a sibling — `homepage`, `repository`,
+   `issue_tracker` and a description of at least 60 characters are required by
+   `deps:validate`.
+3. Depend on siblings by **version constraint**, never by path:
 
-Each package should include:
+   ```yaml
+   dependencies:
+     pillar_core: ^1.0.0
+   ```
 
-- Unit tests for all public APIs
-- Widget tests for UI components
-- Integration tests for complex features
-- Example apps demonstrating usage
+   `melos bootstrap` writes the local `path:` into a generated
+   `pubspec_overrides.yaml`, which is gitignored. A bare `path:` dependency
+   makes the package unpublishable on pub.dev.
+4. Start at `0.1.0` while the API is still moving.
+5. Add `README.md`, `CHANGELOG.md` and `LICENSE`.
+6. Run `melos bootstrap`, then `melos run deps:validate`.
 
-## Documentation
+## Versioning
 
-Each package must include:
+Each package carries its own version, bumped from its own conventional commits
+(`melos version`). Releases are tagged `<package>-v<version>`, and the `pillar`
+BoM pins a set of versions known to work together.
 
-- Comprehensive README.md
-- API documentation using dartdoc comments
-- Usage examples
-- CHANGELOG.md following semantic versioning
+See [`docs/VERSIONING.md`](../docs/VERSIONING.md) and
+[`docs/PUBLISHING.md`](../docs/PUBLISHING.md).

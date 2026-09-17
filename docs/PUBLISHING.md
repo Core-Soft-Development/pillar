@@ -99,7 +99,7 @@ dart pub token list
 #### Single Package
 ```bash
 # Navigate to package directory
-cd packages/pillar-core
+cd packages/pillar_core
 
 # Dry run (validate without publishing)
 dart pub publish --dry-run

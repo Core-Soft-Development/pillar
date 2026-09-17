@@ -13,7 +13,7 @@ dependencies:
     sdk: flutter
   meta: ^1.12.0
   pillar_core:
-    path: ../pillar-core
+    path: ../../pillar_core
 
 dev_dependencies:
   flutter_lints: ^4.0.0

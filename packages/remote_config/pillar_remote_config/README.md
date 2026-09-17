@@ -5,9 +5,9 @@ A remote configuration package for the Pillar framework, providing easy access t
 ## Features
 
 - 🔧 **Remote Configuration**: Easy access to remote configuration values
-- 🏗️ **Clean Architecture**: Built on top of pillar-core's clean architecture
+- 🏗️ **Clean Architecture**: Built on top of pillar_core's clean architecture
 - 🚀 **Firebase Integration**: Built-in Firebase Remote Config support
-- 💉 **Dependency Injection**: Seamless integration with pillar-core's DI system
+- 💉 **Dependency Injection**: Seamless integration with pillar_core's DI system
 - 🎯 **Type Safety**: Type-safe configuration access
 - 📱 **Flutter Ready**: Provider-based state management for Flutter apps
 

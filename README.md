@@ -73,8 +73,8 @@ pillar/
 
 This monorepo contains the following packages:
 
-- **[pillar_core](packages/pillar-core)** - Core package with clean architecture foundation and dependency injection
-- **[pillar_remote_config](packages/pillar-remote-config)** - Remote configuration management
+- **[pillar_core](packages/pillar_core)** - Core package with clean architecture foundation and dependency injection
+- **[pillar_remote_config](packages/remote_config/pillar_remote_config)** - Remote configuration management
 
 ## 🔄 Versioning & Release Management
 

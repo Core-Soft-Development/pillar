@@ -17,10 +17,10 @@ Melos provides built-in solutions for this exact scenario through:
 ### 1. **Path Dependencies for Development**
 
 ```yaml
-# packages/pillar-remote-config/pubspec.yaml
+# packages/remote_config/pillar_remote_config/pubspec.yaml
 dependencies:
   pillar_core:
-    path: ../pillar-core  # ← Use during development
+    path: ../pillar_core  # ← Use during development
 ```
 
 **Benefits:**
@@ -52,7 +52,7 @@ command:
 
 ```bash
 # 1. Make changes to pillar_core
-echo "// New feature" >> packages/pillar-core/lib/src/new_feature.dart
+echo "// New feature" >> packages/pillar_core/lib/src/new_feature.dart
 
 # 2. Test locally (uses path dependencies)
 melos test
@@ -70,10 +70,10 @@ melos version --minor
 
 ```bash
 # 1. Make breaking changes
-# Edit packages/pillar-core/lib/pillar_core.dart
+# Edit packages/pillar_core/lib/pillar_core.dart
 
 # 2. Update dependent packages to handle breaking changes
-# Edit packages/pillar-remote-config/lib/src/service.dart
+# Edit packages/remote_config/pillar_remote_config/lib/src/service.dart
 
 # 3. Version with major bump
 melos version --major
@@ -97,7 +97,7 @@ name: pillar_analytics
 version: 0.1.0
 dependencies:
   pillar_core:
-    path: ../pillar-core  # ← Development dependency
+    path: ../pillar_core  # ← Development dependency
 EOF
 
 # 3. Develop and test locally
@@ -116,10 +116,10 @@ melos version --minor
 Melos creates override files during bootstrap:
 
 ```yaml
-# packages/pillar-remote-config/pubspec_overrides.yaml (auto-generated)
+# packages/remote_config/pillar_remote_config/pubspec_overrides.yaml (auto-generated)
 dependency_overrides:
   pillar_core:
-    path: ../pillar-core
+    path: ../pillar_core
 ```
 
 **Purpose:**
@@ -135,7 +135,7 @@ During `melos version`, path dependencies are converted:
 # BEFORE versioning (development)
 dependencies:
   pillar_core:
-    path: ../pillar-core
+    path: ../pillar_core
 
 # AFTER versioning (ready for publication)
 dependencies:
@@ -186,7 +186,7 @@ analyzer:
 # ✅ GOOD - Always use path in source
 dependencies:
   pillar_core:
-    path: ../pillar-core
+    path: ../pillar_core
 
 # ❌ BAD - Don't use version constraints in source
 dependencies:
