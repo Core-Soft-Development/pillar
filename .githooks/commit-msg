@@ -3,7 +3,10 @@
 # Conventional Commits validation hook
 # This hook validates commit messages against conventional commits format
 
-commit_regex='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .{1,50}'
+# The `!` marks a breaking change. It is part of Conventional Commits, and it
+# is what melos reads to decide on a major bump — rejecting it made a breaking
+# release impossible to commit.
+commit_regex='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?: .+'
 
 error_msg="❌ Invalid commit message format!
 
@@ -26,13 +29,15 @@ Types:
 Examples:
   ✅ feat: add user authentication
   ✅ fix(auth): resolve login validation issue
+  ✅ feat(core)!: rename the container (breaking)
   ✅ docs: update README with installation steps
-  ✅ refactor(api): simplify user service logic
 
 Your commit message: $(cat $1)
 "
 
-if ! grep -qE "$commit_regex" "$1"; then
+# Only the subject line is validated; the body is free-form, and scanning it
+# would let any line that happens to start with a type pass the whole message.
+if ! head -n 1 "$1" | grep -qE "$commit_regex"; then
     echo "$error_msg"
     exit 1
 fi
