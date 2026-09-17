@@ -148,6 +148,5 @@ yarn-error.log*
 # Melos — generated at bootstrap, never commit
 pubspec_overrides.yaml
 
-# Library packages must not commit their lockfile (apps/examples may)
+# Packages and their examples are libraries/showcases, not deployed apps:
 packages/**/pubspec.lock
-!packages/**/example/pubspec.lock
