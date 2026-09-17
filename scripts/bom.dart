@@ -104,6 +104,27 @@ Map<String, String> _parsePins(String? pubspec) {
 bool _sameSet(Map<String, String> a, Map<String, String> b) =>
     a.length == b.length && a.keys.every((k) => a[k] == b[k]);
 
+/// The `environment:` block of the root pubspec, verbatim.
+///
+/// The BoM has to declare the same SDK range as the packages it pins, and
+/// hardcoding it here would mean a raised constraint silently reverted on the
+/// next sync. The root workspace pubspec is the single source.
+String _environmentBlock() {
+  final root = File('pubspec.yaml').readAsLinesSync();
+  final start = root.indexWhere((l) => l.startsWith('environment:'));
+  if (start == -1) {
+    stderr.writeln('No environment: block in the root pubspec.yaml');
+    exit(1);
+  }
+
+  final block = <String>[root[start]];
+  for (final line in root.skip(start + 1)) {
+    if (!line.startsWith(' ') || line.trim().isEmpty) break;
+    block.add(line);
+  }
+  return block.join('\n');
+}
+
 String _renderBom(String version, Map<String, String> members) {
   final names = members.keys.toList()..sort();
   final pins = names.map((n) => '  $n: ${members[n]}').join('\n');
@@ -121,9 +142,7 @@ homepage: https://github.com/Core-Soft-Development/pillar
 repository: https://github.com/Core-Soft-Development/pillar
 issue_tracker: https://github.com/Core-Soft-Development/pillar/issues
 
-environment:
-  sdk: ">=3.6.0 <4.0.0"
-  flutter: ">=3.35.0"
+${_environmentBlock()}
 
 dependencies:
 $pins

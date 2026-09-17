@@ -9,8 +9,8 @@ repository: https://github.com/Core-Soft-Development/pillar
 issue_tracker: https://github.com/Core-Soft-Development/pillar/issues
 
 environment:
-  sdk: ">=3.6.0 <4.0.0"
-  flutter: ">=3.35.0"
+  sdk: ">=3.12.0 <4.0.0"
+  flutter: ">=3.44.0"
 
 dependencies:
   flutter:
