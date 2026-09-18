@@ -8,10 +8,10 @@ class RemoteConfigProvider extends BaseProvider {
 
   /// Repository for remote configuration operations
   final RemoteConfigRepository repository;
-  Map<String, dynamic> _configs = {};
+  Map<String, Object?> _configs = {};
 
   /// Get all configurations
-  Map<String, dynamic> get configs => Map.unmodifiable(_configs);
+  Map<String, Object?> get configs => Map.unmodifiable(_configs);
 
   /// Get a specific configuration value
   T? getConfig<T>(String key) {

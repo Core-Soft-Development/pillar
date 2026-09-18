@@ -1,86 +1,99 @@
-# Pillar Remote Config
+# pillar_remote_config
 
-A remote configuration package for the Pillar framework, providing easy access to Firebase Remote Config and other remote configuration services.
+Typed access to configuration that lives outside the app — feature flags,
+thresholds, anything you want to change without shipping a build.
 
-## Features
-
-- 🔧 **Remote Configuration**: Easy access to remote configuration values
-- 🏗️ **Clean Architecture**: Built on top of pillar_core's clean architecture
-- 🚀 **Firebase Integration**: Built-in Firebase Remote Config support
-- 💉 **Dependency Injection**: Seamless integration with pillar_core's DI system
-- 🎯 **Type Safety**: Type-safe configuration access
-- 📱 **Flutter Ready**: Provider-based state management for Flutter apps
+This package is the **contract**. It ships one implementation,
+`InMemoryRemoteConfigService`, which serves a plain map. A real backend
+(Firebase Remote Config, a REST endpoint, a file) belongs in its own
+`pillar_remote_config_*` package, so that swapping one for another never
+touches the code that reads config.
 
 ## Installation
 
-Add `pillar_remote_config` to your `pubspec.yaml`:
-
 ```yaml
 dependencies:
-  pillar_remote_config: ^1.0.0
+  pillar_remote_config: ^0.1.0
 ```
 
 ## Usage
 
-### Setup Dependencies
+### Register the dependencies
 
 ```dart
 import 'package:pillar_core/pillar_core.dart';
 import 'package:pillar_remote_config/pillar_remote_config.dart';
 
-void setupDependencies() {
-  final container = ServiceLocator.container;
+final container = PillarContainer();
 
-  // Register remote config service
-  container.registerLazySingleton<RemoteConfigService>(
-    () => FirebaseRemoteConfigService(),
-  );
+// Swap this one registration for a real backend when you have one.
+container.registerLazySingleton<RemoteConfigService>(
+  () => InMemoryRemoteConfigService({
+    'welcome_message': 'Hello',
+    'feature_x_enabled': false,
+    'max_retries': 3,
+  }),
+);
 
-  // Register repository
-  container.registerLazySingleton<RemoteConfigRepository>(
-    () => RemoteConfigRepositoryImpl(
-      service: ServiceLocator.get<RemoteConfigService>(),
-    ),
-  );
+container.registerLazySingleton<RemoteConfigRepository>(
+  () => RemoteConfigRepositoryImpl(service: container.get<RemoteConfigService>()),
+);
 
-  // Register provider
-  container.registerFactory<RemoteConfigProvider>(
-    () => RemoteConfigProvider(
-      repository: ServiceLocator.get<RemoteConfigRepository>(),
-    ),
-  );
-}
+container.registerFactory<RemoteConfigProvider>(
+  () => RemoteConfigProvider(repository: container.get<RemoteConfigRepository>()),
+);
 ```
 
-### Using in Widgets
+The backend is named exactly once, at the composition root. Nothing downstream
+knows which one it is.
+
+### Read values
 
 ```dart
-class MyWidget extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return DependencyConsumer<RemoteConfigProvider>(
-      builder: (context, provider, child) {
-        final welcomeMessage = provider.getConfig<String>('welcome_message') ?? 'Welcome!';
-        final isFeatureEnabled = provider.getConfig<bool>('feature_enabled') ?? false;
-        
-        return Column(
-          children: [
-            Text(welcomeMessage),
-            if (isFeatureEnabled) 
-              ElevatedButton(
-                onPressed: () => provider.refreshConfigs(),
-                child: Text('Refresh Config'),
-              ),
-          ],
-        );
-      },
-    );
-  }
-}
+final config = container.get<RemoteConfigService>();
+
+final message = config.getString('welcome_message', defaultValue: 'Hi');
+final enabled = config.getBool('feature_x_enabled');
+final retries = config.getInt('max_retries', defaultValue: 1);
 ```
 
-## Version
+Every getter takes a `defaultValue`, returned when the key is missing **or**
+holds a value of another type. Remote config is data someone else controls; a
+bad value upstream should not take the app down.
 
-Current version: 1.0.0
+### In Flutter
 
-This package depends on `pillar_core` and will be updated automatically when pillar_core has breaking changes.
+```dart
+import 'package:pillar_flutter/pillar_flutter.dart';
+
+runApp(PillarScope(container: container, child: const MyApp()));
+
+// then, anywhere below it
+final config = context.get<RemoteConfigService>();
+```
+
+`RemoteConfigProvider` is a `BaseProvider`, so it works with
+`ListenableBuilder` for screens that refresh config at runtime.
+
+### In tests
+
+`InMemoryRemoteConfigService` is the whole test setup — no fakes to write:
+
+```dart
+final service = InMemoryRemoteConfigService({'feature_x_enabled': true});
+// ... exercise the code under test
+service.setAll({'feature_x_enabled': false});
+```
+
+## API
+
+| Type | Role |
+|---|---|
+| `RemoteConfigService` | The contract: typed reads, `hasKey`, `getAll`, `fetchAndActivate` |
+| `InMemoryRemoteConfigService` | Map-backed implementation, for tests and defaults |
+| `RemoteConfigRepository` | Async access over a service, used by the provider |
+| `RemoteConfigProvider` | Flutter state for config that changes at runtime |
+
+`fetchAndActivate` returns whether new values were activated.
+`InMemoryRemoteConfigService` returns `false` — there is nothing behind it to
+fetch, and claiming otherwise would hide a backend you forgot to wire in.

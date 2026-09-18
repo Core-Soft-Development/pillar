@@ -1,5 +1,5 @@
 name: pillar_remote_config
-description: Remote configuration for the Pillar framework — typed feature flags and runtime parameters, backed by Firebase Remote Config.
+description: Remote configuration for the Pillar framework — the contract for typed feature flags and runtime parameters, with an in-memory implementation.
 version: 0.1.0
 homepage: https://github.com/Core-Soft-Development/pillar
 repository: https://github.com/Core-Soft-Development/pillar
@@ -14,7 +14,6 @@ environment:
 resolution: workspace
 
 dependencies:
-  firebase_remote_config: ^4.4.0
   flutter:
     sdk: flutter
   meta: ^1.12.0

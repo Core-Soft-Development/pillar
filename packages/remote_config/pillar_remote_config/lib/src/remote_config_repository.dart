@@ -7,7 +7,7 @@ abstract interface class RemoteConfigRepository implements BaseRepository {
   Future<T?> getConfig<T>(String key);
 
   /// Get all configuration values
-  Future<Map<String, dynamic>> getAllConfigs();
+  Future<Map<String, Object?>> getAllConfigs();
 
   /// Refresh configuration from remote source
   Future<bool> refreshConfig();
@@ -39,10 +39,7 @@ class RemoteConfigRepositoryImpl implements RemoteConfigRepository {
   }
 
   @override
-  Future<Map<String, dynamic>> getAllConfigs() async {
-    // Implementation would return all configs
-    return {};
-  }
+  Future<Map<String, Object?>> getAllConfigs() async => service.getAll();
 
   @override
   Future<bool> refreshConfig() async {
