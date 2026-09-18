@@ -164,6 +164,9 @@ melos:
 
     release:preview:
       run: |
+        # set -e, or a refused `melos version` still prints a "projected"
+        # listing of the versions it declined to change.
+        set -e
         melos version --yes --ignore="pillar" \
           --no-git-tag-version --no-git-commit-version
         echo ""
