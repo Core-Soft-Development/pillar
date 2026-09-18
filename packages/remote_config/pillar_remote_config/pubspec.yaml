@@ -1,6 +1,6 @@
 name: pillar_remote_config
 description: Remote configuration for the Pillar framework — typed feature flags and runtime parameters, backed by Firebase Remote Config.
-version: 1.0.0
+version: 0.1.0
 homepage: https://github.com/Core-Soft-Development/pillar
 repository: https://github.com/Core-Soft-Development/pillar
 issue_tracker: https://github.com/Core-Soft-Development/pillar/issues
@@ -20,10 +20,10 @@ dependencies:
   meta: ^1.12.0
   # Version constraint, not a path: pub.dev rejects path dependencies.
   # The pub workspace resolves this to the local package.
-  pillar_core: ^1.0.0
+  pillar_core: ^0.1.0
   # BaseProvider is a ChangeNotifier, so it lives in the Flutter binding rather
   # than in pure-Dart pillar_core.
-  pillar_flutter: ^1.0.0
+  pillar_flutter: ^0.1.0
 
 dev_dependencies:
   flutter_lints: ^6.0.0

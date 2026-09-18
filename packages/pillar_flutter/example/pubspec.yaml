@@ -14,8 +14,8 @@ resolution: workspace
 dependencies:
   flutter:
     sdk: flutter
-  pillar_core: ^1.0.0
-  pillar_flutter: ^1.0.0
+  pillar_core: ^0.1.0
+  pillar_flutter: ^0.1.0
 
 dev_dependencies:
   flutter_lints: ^6.0.0
