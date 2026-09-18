@@ -36,12 +36,26 @@ any push to `main` reaches pub.dev unattended.
 ## Branch protection
 
 The release job pushes the version commit and its tags to `main` using
-`GITHUB_TOKEN`. `main` is currently unprotected, so this works as is.
+`GITHUB_TOKEN`. `main` is protected by the "Protect main branch" ruleset, whose
+`pull_request` rule **rejects that push** — so the bypass below is a
+prerequisite, not a precaution.
 
-If you protect `main`, that token needs a bypass — otherwise the push is
-rejected *after* the packages are already on pub.dev, which is the one failure
-the release ordering cannot undo. Grant the bypass, or switch to a GitHub App
-token.
+Without it the release publishes to pub.dev and then fails on the push, which
+is the one failure the ordering cannot undo.
+
+The GitHub Actions integration can only be added to a ruleset's bypass list at
+the organization level. A repository-scoped ruleset refuses it:
+
+```
+Actor GitHub Actions integration must be part of the ruleset source or
+owner organization
+```
+
+Failing that, use a GitHub App token, or have the release open a pull request
+rather than push.
+
+Rulesets are not classic branch protection: the `branches/main/protection`
+endpoint returns 404 for this repository even though `main` is protected.
 
 ## Verifying
 

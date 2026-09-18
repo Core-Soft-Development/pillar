@@ -76,11 +76,30 @@ only on the job that needs it.
 
 ## Branch protection
 
-The release job pushes the version commit to `main` with `GITHUB_TOKEN`. If
-`main` is protected, that token needs a bypass — otherwise the push is rejected
-after the packages are already on pub.dev, which is the one failure mode the
-ordering cannot protect you from. Grant the bypass, or swap in a GitHub App
-token.
+`main` is protected by the **"Protect main branch"** ruleset, which enforces
+`deletion`, `non_fast_forward`, `pull_request` and `required_linear_history`.
+
+Note that rulesets are a separate mechanism from classic branch protection:
+`GET /repos/{owner}/{repo}/branches/main/protection` returns 404 here, which
+does **not** mean the branch is open. Check `/rulesets`.
+
+Two consequences:
+
+**Merge pull requests with rebase.** `required_linear_history` rejects merge
+commits, and a squash would collapse every conventional commit into one — melos
+reads them individually to decide each package's bump, so a squashed release
+versions the wrong things, or nothing.
+
+**The release job needs a bypass.** Its last step pushes the version commit and
+its tags with `GITHUB_TOKEN`, which the `pull_request` rule rejects. Without a
+bypass entry the release publishes to pub.dev and *then* fails on the push —
+the one failure the ordering cannot undo.
+
+Adding the GitHub Actions integration to the ruleset's bypass list has to be
+done at the organization level; a repository-scoped ruleset refuses it with
+"Actor GitHub Actions integration must be part of the ruleset source or owner
+organization". The alternative is a GitHub App token, or having the release
+open a pull request instead of pushing.
 
 ## Running checks locally
 
