@@ -8,10 +8,11 @@ packages/ @LeoPaulJulie
 docs/ @LeoPaulJulie
 *.md @LeoPaulJulie
 
-# Configuration files
-melos.yaml @LeoPaulJulie
+# Configuration files. The root pubspec now carries the melos config and the
+# workspace member list, so it covers what melos.yaml used to.
 pubspec.yaml @LeoPaulJulie
-analysis_options.yaml @LeoPaulJulie
+analysis_options*.yaml @LeoPaulJulie
+.fvmrc @LeoPaulJulie
 
 # Scripts and CI
 scripts/ @LeoPaulJulie

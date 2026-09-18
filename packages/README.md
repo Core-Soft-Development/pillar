@@ -56,7 +56,7 @@ Three rules carry most of the weight:
 - **An app depends on interfaces, and names an implementation exactly once** —
   at composition root, where dependencies are registered.
 
-`melos run deps:validate` enforces both, plus cycle detection, in CI.
+`melos run deps:validate` enforces all three, plus cycle detection, in CI.
 
 ## Why implementations live in this repo
 

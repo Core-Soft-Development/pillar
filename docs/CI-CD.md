@@ -86,5 +86,5 @@ token.
 
 ```bash
 melos run ci:verify         # exactly what a PR runs
-melos run release:rehearse   # exactly what the rehearsal runs
+melos run release:rehearse  # exactly what the rehearsal runs
 ```

@@ -23,13 +23,11 @@ By participating in this project, you agree to abide by our Code of Conduct. Ple
    git clone https://github.com/your-username/pillar.git
    cd pillar
    ```
-3. Install Melos globally:
+3. Run the setup script. It installs the melos version this repo pins, checks
+   your Flutter against `.fvmrc`, bootstraps the workspace and installs the
+   commit hooks:
    ```bash
-   dart pub global activate melos
-   ```
-4. Bootstrap the workspace:
-   ```bash
-   melos bootstrap
+   ./scripts/setup.sh
    ```
 
 ## Development Workflow
@@ -93,18 +91,24 @@ This project follows strict coding standards based on Flutter and Dart best prac
 Before submitting a pull request, ensure your code passes all quality checks:
 
 ```bash
-# Run static analysis
-melos analyze
-
-# Format code
-melos format
-
-# Run tests
-melos test
-
-# Generate code if needed
-melos build_runner
+# Everything a pull request runs, in one command
+melos run ci:verify
 ```
+
+`ci:verify` is analysis, formatting, the dependency-graph rules and the tests.
+It is the same command CI executes, so a green run locally means a green run
+there. Individually:
+
+```bash
+melos run analyze
+melos run format         # format:check to verify without rewriting
+melos run deps:validate
+melos run test
+melos run build_runner   # only if you changed generated code
+```
+
+Use `melos run <script>`, not `melos <script>`: melos 8 has built-in commands
+named `analyze` and `format` too, and the bare form is ambiguous.
 
 ### Testing
 

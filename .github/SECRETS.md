@@ -1,110 +1,59 @@
-# GitHub Secrets Configuration
+# Secrets and environments
 
-This document describes the required secrets for the CI/CD pipeline.
+## Secrets
 
-## Required Secrets
+| Secret | Used by | Purpose |
+|---|---|---|
+| `PUB_CREDENTIALS` | `release.yml` | Publishing to pub.dev |
+| `GITHUB_TOKEN` | provided by GitHub | Pushing tags, creating releases |
 
-Configure these secrets in your GitHub repository settings (`Settings > Secrets and variables > Actions`):
+That is the whole list. No notification webhooks are configured, because no
+workflow sends notifications.
 
-### pub.dev Configuration
-- **`PUB_CREDENTIALS`** - Complete credentials JSON file for pub.dev publishing (includes refresh token for auto-renewal)
+### `PUB_CREDENTIALS`
 
-### Optional Notification Secrets
-- **`SLACK_WEBHOOK_URL`** - Webhook URL for Slack notifications (optional)
-- **`DISCORD_WEBHOOK_URL`** - Webhook URL for Discord notifications (optional)
+The complete `credentials.json`, refresh token included, so that `dart pub` can
+renew the access token on its own.
 
-## Setting Up Secrets
-
-### 1. pub.dev Setup
-
-1. **Generate pub.dev token:**
-   ```bash
-   # Login to pub.dev locally first
-   dart pub login
-   
-   # Get your credentials file
-   cat ~/.pub-cache/credentials.json
-   ```
-
-2. **Copy complete credentials:**
-   - Copy the ENTIRE JSON content from the credentials.json file
-   - Include the `refreshToken` for automatic token renewal
-   - This is your `PUB_CREDENTIALS` value
-
-3. **Add to GitHub:**
-   - Go to repository Settings > Secrets and variables > Actions
-   - Click "New repository secret"
-   - Name: `PUB_CREDENTIALS`
-   - Value: The complete JSON from step 2
-
-### 2. Notification Setup (Optional)
-
-#### Slack
 ```bash
-# Create a Slack webhook in your workspace
-# Add the webhook URL as SLACK_WEBHOOK_URL secret
+dart pub login                          # once, locally
+cat ~/.config/dart/pub-credentials.json # or ~/.pub-cache/credentials.json on older SDKs
 ```
 
-#### Discord
+Copy the whole JSON into **Settings → Secrets and variables → Actions → New
+repository secret**, named `PUB_CREDENTIALS`.
+
+Rotation is covered in [docs/PUB-TOKEN-ROTATION.md](../docs/PUB-TOKEN-ROTATION.md).
+
+## Environments
+
+`release.yml` runs its publishing job in an environment named **`pub-dev`**.
+
+Create it under **Settings → Environments** and add a required reviewer.
+Without it, GitHub creates the environment implicitly with no protection, and
+any push to `main` reaches pub.dev unattended.
+
+## Branch protection
+
+The release job pushes the version commit and its tags to `main` using
+`GITHUB_TOKEN`. `main` is currently unprotected, so this works as is.
+
+If you protect `main`, that token needs a bypass — otherwise the push is
+rejected *after* the packages are already on pub.dev, which is the one failure
+the release ordering cannot undo. Grant the bypass, or switch to a GitHub App
+token.
+
+## Verifying
+
 ```bash
-# Create a Discord webhook in your server
-# Add the webhook URL as DISCORD_WEBHOOK_URL secret
+melos run release:rehearse   # asks pub.dev to validate every package
 ```
 
-## Security Best Practices
+## A note on the future
 
-- Use tokens with minimal required permissions
-- Rotate tokens regularly
-- Never log secret values in workflows
-- Use environment-specific secrets when possible
-
-## Verification
-
-Test your setup:
-```bash
-# Dry run to test authentication
-melos publish --dry-run
-```
-
-## Troubleshooting
-
-### Common Issues
-
-#### pub.dev Authentication Failed
-```
-Error: 401 Unauthorized when accessing https://pub.dartlang.org
-```
-**Solution:** Check that `PUB_CREDENTIALS` contains valid JSON with both accessToken and refreshToken.
-
-#### Token Expired
-```
-Error: Token has expired
-```
-**Solution:** Generate a new token using `dart pub login` and update the secret.
-
-#### Missing Permissions
-```
-Error: Insufficient permissions to publish package
-```
-**Solution:** Ensure you have publisher permissions for the package on pub.dev.
-
-## Token Management
-
-### Rotating Tokens
-1. Generate new token: `dart pub login`
-2. Update GitHub secret with new token
-3. Test with dry-run: `melos publish --dry-run`
-
-### Monitoring
-- Monitor pub.dev package dashboard
-- Set up alerts for failed releases
-- Review workflow logs regularly
-
-## Package Publishing Process
-
-1. **Authentication**: GitHub Actions uses `PUB_TOKEN` to authenticate
-2. **Validation**: Packages are validated before publishing
-3. **Publishing**: Only changed packages are published
-4. **Verification**: Success/failure is reported in workflow logs
-
-For more details, see the main [CI/CD documentation](../docs/CI-CD.md).
+pub.dev supports automated publishing over OIDC, which replaces
+`PUB_CREDENTIALS` with a short-lived token minted per run. Two constraints
+apply: a package must already have been published manually once, and the
+workflow must be triggered by pushing a git tag — which conflicts with the
+current ordering, where tags are pushed only after pub.dev accepts everything.
+Tracked as COR-715.

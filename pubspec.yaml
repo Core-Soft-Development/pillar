@@ -146,10 +146,10 @@ melos:
       description: Fail if the BoM has drifted from published package versions.
 
     # --- release ---------------------------------------------------------------
-  #
-  # These are prefixed `release:` because melos 8 treats `melos <script>` as a
-  # shorthand for `melos run <script>`: a script named `publish` shadows the
-  # built-in `melos publish`, and any script calling it recurses into itself.
+    #
+    # Prefixed `release:` because melos 8 treats `melos <script>` as shorthand
+    # for `melos run <script>`: a script named `publish` shadows the built-in
+    # `melos publish`, and any script calling it recurses into itself.
     #
     # `melos version` reads conventional commits and bumps each package on its
     # own. There is no lockstep bump: that is what the BoM is for.

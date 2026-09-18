@@ -36,7 +36,7 @@ and `updateDependentsVersionConstraints`, under `melos:` in the root pubspec.
 
 ```bash
 melos run release:preview   # what would be released, without committing
-melos run release:version           # bump, write changelogs, tag locally
+melos run release:version   # bump, write changelogs, tag locally
 ```
 
 `melos run release:version` does **not** push. It leaves a commit and one
