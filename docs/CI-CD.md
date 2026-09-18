@@ -4,7 +4,7 @@ Three workflows. Nothing runs twice over the same commit.
 
 | Workflow | Trigger | Does |
 |---|---|---|
-| `pr-checks.yml` | pull request | title, verification, release rehearsal (PRs to `main`) |
+| `pr-checks.yml` | pull request | title, verification, release rehearsal |
 | `release.yml` | push to `main`, manual | version, publish, tag, document |
 | `extended-checks.yml` | manual | example app builds, coverage |
 
@@ -13,8 +13,12 @@ Three workflows. Nothing runs twice over the same commit.
 ```
 title              conventional commit title
 verify             analyze · format:check · deps:validate · test
-release-rehearsal  pub.dev dry run + BoM check   (only for PRs into main)
+release-rehearsal  pub.dev dry run + BoM check
 ```
+
+The branching model is `feature -> develop -> main`, and the rehearsal runs on
+both targets: a package pub.dev would reject should fail the first pull
+request, not the one that releases it.
 
 `verify` runs `melos run ci:verify`, which is the same command you can run
 locally — no separate CI-only definition to drift from.

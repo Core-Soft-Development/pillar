@@ -90,8 +90,10 @@ jobs:
 
   release-rehearsal:
     name: Release rehearsal
-    # Only for PRs aimed at main, where the next step really is a release.
-    if: github.event.pull_request.draft == false && github.event.pull_request.base.ref == 'main'
+    # Runs for develop as well as main. The flow is feature -> develop -> main,
+    # so restricting this to main would surface a pub.dev rejection one merge
+    # later than it needs to be — after the change is already on develop.
+    if: github.event.pull_request.draft == false
     needs: [verify]
     runs-on: ubuntu-latest
     timeout-minutes: 20
