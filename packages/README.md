@@ -9,23 +9,27 @@ its implementations sit side by side, inside a folder named after the domain.
 
 ```
 packages/
-├── pillar_core/                          # tier 0 — the highest-level contracts
-├── pillar_flutter/                       # tier 0b — bindings to one runtime
-│
-├── remote_config/                        # one folder per domain
-│   ├── pillar_remote_config/             #   tier 1 — the app-facing interface
-│   └── pillar_remote_config_firebase/    #   tier 2 — an implementation
-│
+├── pillar_core/       # tier 0  — contracts, DI, errors. Pure Dart.
+├── pillar_flutter/    # tier 0b — the seam between the container and widgets
+└── pillar/            # tier 4  — the BoM, no code at all
+```
+
+That is the whole repository today. Domain packages get added around it, one
+folder per domain, an interface next to its implementations:
+
+```
+packages/
 ├── notifications/
-│   ├── pillar_notifications/
-│   ├── pillar_notifications_firebase/
-│   └── pillar_notifications_local/
+│   ├── pillar_notifications/                 # tier 1 — the app-facing interface
+│   ├── pillar_notifications_platform_interface/
+│   └── pillar_notifications_firebase/        # tier 2 — an implementation
 │
-├── testing/                              # tier 3 — tooling
-│   ├── pillar_test/
-│   └── pillar_golden_test/
+├── webview/
+│   └── pillar_webview/
 │
-└── pillar/                               # tier 4 — the BoM
+└── testing/                                  # tier 3 — tooling
+    ├── pillar_test/
+    └── pillar_golden_test/
 ```
 
 The folder name always matches the package name, in `snake_case`. Each package

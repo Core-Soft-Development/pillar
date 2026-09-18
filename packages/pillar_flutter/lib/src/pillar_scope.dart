@@ -9,7 +9,7 @@ import 'package:pillar_core/pillar_core.dart';
 /// ```dart
 /// Future<void> main() async {
 ///   final container = PillarContainer();
-///   await installModules(container, [PillarRemoteConfigFirebaseModule()]);
+///   await installModules(container, [PillarNotificationsFirebaseModule()]);
 ///   runApp(PillarScope(container: container, child: const MyApp()));
 /// }
 /// ```

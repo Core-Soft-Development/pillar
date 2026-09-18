@@ -27,7 +27,7 @@ Then depend on the packages you actually use, without a version:
 dependencies:
   pillar: ^2026.09.0
   pillar_core:
-  pillar_remote_config:
+  pillar_flutter:
 ```
 
 Resolution takes the versions the BoM pins.

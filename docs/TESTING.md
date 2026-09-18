@@ -40,9 +40,9 @@ carrying a script that runs nothing.
 
 ### Core Packages (Required Tests)
 These packages **must** have comprehensive tests:
-- ✅ `pillar_core` - Foundation package with DI and architecture
-- ✅ `pillar_remote_config` - Remote configuration management
-- ✅ Future core packages
+- ✅ `pillar_core` — contracts, dependency injection, error types
+- ✅ `pillar_flutter` — the seam between the container and widgets
+- ✅ Every package added later
 
 ### Example Packages (Optional Tests)
 These packages typically **don't need** tests:

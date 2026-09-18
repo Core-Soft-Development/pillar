@@ -9,7 +9,7 @@ import 'package:pillar_core/src/di/pillar_container.dart';
 ///
 /// ```dart
 /// await Pillar.install([
-///   PillarRemoteConfigFirebaseModule(app: firebaseApp),
+///   PillarNotificationsFirebaseModule(app: firebaseApp),
 ///   PillarNotificationsFirebaseModule(),
 /// ]);
 /// ```

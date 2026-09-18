@@ -8,7 +8,7 @@ import 'package:pillar_core/src/di/pillar_module.dart';
 ///
 /// ```dart
 /// Future<void> main() async {
-///   await Pillar.install([PillarRemoteConfigFirebaseModule()]);
+///   await Pillar.install([PillarNotificationsFirebaseModule()]);
 ///   runApp(const MyApp());
 /// }
 /// ```

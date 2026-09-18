@@ -104,15 +104,15 @@ A module is one package's contribution to the graph. Packages ship one instead
 of asking consumers to wire their internals:
 
 ```dart
-final class PillarRemoteConfigFirebaseModule extends PillarModule {
-  const PillarRemoteConfigFirebaseModule();
+final class PillarNotificationsFirebaseModule extends PillarModule {
+  const PillarNotificationsFirebaseModule();
 
   @override
   List<PillarModule> get dependencies => const [PillarCoreModule()];
 
   @override
   void register(PillarContainer container) {
-    container.registerAsyncSingleton<RemoteConfig>((c) => FirebaseRemoteConfig.open());
+    container.registerAsyncSingleton<Notifications>((c) => FirebaseNotifications.open());
   }
 }
 ```
@@ -121,7 +121,7 @@ An application names what it wants; order and asynchronous setup follow:
 
 ```dart
 await installModules(container, [
-  const PillarRemoteConfigFirebaseModule(),
+  const PillarNotificationsFirebaseModule(),
   const PillarNotificationsFirebaseModule(),
 ]);
 ```

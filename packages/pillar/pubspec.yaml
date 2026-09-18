@@ -21,4 +21,3 @@ resolution: workspace
 dependencies:
   pillar_core: 0.1.0
   pillar_flutter: 0.1.0
-  pillar_remote_config: 0.1.0

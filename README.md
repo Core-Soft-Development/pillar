@@ -73,8 +73,15 @@ pillar/
 
 This monorepo contains the following packages:
 
-- **[pillar_core](packages/pillar_core)** - Core package with clean architecture foundation and dependency injection
-- **[pillar_remote_config](packages/remote_config/pillar_remote_config)** - Remote configuration management
+- **[pillar_core](packages/pillar_core)** — contracts, dependency injection and
+  error types. Pure Dart, so it runs in a server or a CLI as well as an app.
+- **[pillar_flutter](packages/pillar_flutter)** — the seam between the container
+  and a widget tree: `PillarScope`, `context.get<T>()`, `BaseProvider`.
+- **[pillar](packages/pillar)** — the Bill of Materials, pinning a released set.
+
+Domain packages get added around this core, one folder per domain. See
+[packages/README.md](packages/README.md) for the layout and the rules between
+tiers.
 
 ## 🔄 Versioning & Release Management
 

@@ -17,14 +17,14 @@ Melos provides built-in solutions for this exact scenario through:
 ### 1. **Path Dependencies for Development**
 
 ```yaml
-# packages/remote_config/pillar_remote_config/pubspec.yaml
+# packages/pillar_flutter/pubspec.yaml
 dependencies:
   pillar_core:
     path: ../pillar_core  # ← Use during development
 ```
 
 **Benefits:**
-- ✅ **Instant feedback** - Changes in `pillar_core` immediately available in `pillar_remote_config`
+- ✅ **Instant feedback** - Changes in `pillar_core` immediately available in `pillar_flutter`
 - ✅ **No publishing required** - Work with unreleased features
 - ✅ **Consistent development** - All packages use same codebase state
 
@@ -59,12 +59,12 @@ echo "// New feature" >> packages/pillar_core/lib/src/new_feature.dart
 melos test
 
 # 3. Version and publish (Melos handles everything)
-melos version --minor
+melos run release:version
 # Melos will:
-# - Version pillar_core to 1.1.0
-# - Update pillar_remote_config to depend on "pillar_core: ^1.1.0"
+# - Version pillar_core to 0.2.0, from the feat: commits
+# - Update pillar_flutter to depend on "pillar_core: ^0.2.0"
 # - Publish pillar_core first
-# - Then publish pillar_remote_config
+# - Then publish pillar_flutter
 ```
 
 ### Scenario 2: Breaking Change in pillar_core
@@ -74,14 +74,14 @@ melos version --minor
 # Edit packages/pillar_core/lib/pillar_core.dart
 
 # 2. Update dependent packages to handle breaking changes
-# Edit packages/remote_config/pillar_remote_config/lib/src/service.dart
+# Edit packages/pillar_flutter/lib/src/pillar_scope.dart
 
 # 3. Version with major bump
-melos version --major
+melos run release:version
 # Melos will:
-# - Version pillar_core to 2.0.0
-# - Update pillar_remote_config dependency to "pillar_core: ^2.0.0"
-# - Version pillar_remote_config (major bump due to breaking dep change)
+# - Version pillar_core to 1.0.0, from the `feat!:` breaking marker
+# - Update pillar_flutter dependency to "pillar_core: ^1.0.0"
+# - Version pillar_flutter (major bump due to breaking dep change)
 # - Publish in correct order
 ```
 
@@ -122,11 +122,11 @@ pubspec lists its members under `workspace:`, and each package declares
 # pubspec.yaml (root)
 workspace:
   - packages/pillar_core
-  - packages/remote_config/pillar_remote_config
+  - packages/pillar_flutter
 ```
 
 ```yaml
-# packages/remote_config/pillar_remote_config/pubspec.yaml
+# packages/pillar_flutter/pubspec.yaml
 resolution: workspace
 
 dependencies:
@@ -163,7 +163,7 @@ Melos automatically determines publication order:
 
 ```
 1. pillar_core (no dependencies)
-2. pillar_remote_config (depends on pillar_core)
+2. pillar_flutter (depends on pillar_core)
 3. pillar_analytics (depends on pillar_core)
 ```
 
@@ -210,7 +210,7 @@ dependencies:
 
 ```bash
 # ✅ GOOD - Let Melos update versions
-melos version --major
+melos run release:version   # major comes from a `feat!:` commit
 
 # ❌ BAD - Don't manually update version constraints
 # (editing pubspec.yaml to change pillar_core: ^1.0.0 to ^2.0.0)
@@ -224,7 +224,7 @@ melos test
 melos analyze
 
 # Then version and publish
-melos version --minor
+melos run release:version   # minor comes from a `feat:` commit
 ```
 
 ### 4. Use Conventional Commits
@@ -251,7 +251,7 @@ git commit -m "fix: resolve memory leak"
 **Solution:**
 ```bash
 # Use Melos versioning (not manual)
-melos version --patch  # Instead of: dart pub version patch
+melos run release:version   # patch comes from a `fix:` commit
 ```
 
 ### Issue: Dependency Version Conflicts
@@ -278,7 +278,7 @@ melos list --graph
 ```bash
 # Publish manually in order
 melos publish --scope="pillar_core"
-melos publish --scope="pillar_remote_config"
+melos publish --scope="pillar_flutter"
 ```
 
 ## 📊 Development Workflow
@@ -306,7 +306,7 @@ git add .
 git commit -m "feat: new feature complete"
 
 # 2. Version (converts path deps to version constraints)
-melos version --minor
+melos run release:version   # minor comes from a `feat:` commit
 
 # 3. Publish (handles order automatically)
 melos publish --yes

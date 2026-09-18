@@ -78,8 +78,8 @@ melos publish --dry-run
 
 **Expected output:**
 ```
-✓ Publishing pillar_core 1.0.0 to https://pub.dartlang.org:
-✓ Publishing pillar_remote_config 1.0.0 to https://pub.dartlang.org:
+✓ Publishing pillar_core 1.0.0 to https://pub.dev:
+✓ Publishing pillar_flutter 0.1.0 to https://pub.dev:
 ```
 
 ### Step 5: Test GitHub Actions
@@ -104,7 +104,7 @@ git push origin main
 
 ### Token Still Invalid
 ```
-Error: 401 Unauthorized when accessing https://pub.dartlang.org
+Error: 401 Unauthorized when accessing https://pub.dev
 ```
 
 **Solutions:**

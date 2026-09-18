@@ -76,7 +76,7 @@ One tag per package, `<package>-v<version>`:
 
 ```
 pillar_core-v1.2.0
-pillar_remote_config-v1.1.3
+pillar_flutter-v0.2.1
 pillar-v2026.09.0          # the BoM
 ```
 

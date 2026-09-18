@@ -22,7 +22,7 @@ class Package {
   final String path;
   final Tier tier;
 
-  /// The domain folder this package belongs to, e.g. `remote_config`.
+  /// The domain folder this package belongs to, e.g. `notifications`.
   final String? domain;
 
   File get pubspec => File('$path/pubspec.yaml');
@@ -257,7 +257,7 @@ Future<Map<String, List<String>>> _loadGraph() async {
   return graph.map((k, v) => MapEntry(k, (v as List).cast<String>()));
 }
 
-/// `packages/remote_config/pillar_remote_config` -> `remote_config`.
+/// `packages/notifications/pillar_notifications` -> `notifications`.
 /// Top-level packages (`packages/pillar_core`) have no domain.
 String? _domainOf(String path) {
   final parts = path.split(Platform.pathSeparator);
@@ -277,7 +277,7 @@ Tier _tierOf(String name, String path, bool isPrivate) {
   if (domain == null) return Tier.binding;
   if (domain == 'testing' || domain == 'tooling') return Tier.tooling;
 
-  // pillar_remote_config == the interface; pillar_remote_config_firebase, an
+  // pillar_notifications == the interface; pillar_notifications_firebase, an
   // implementation of it.
   return name == 'pillar_$domain' ? Tier.domain : Tier.implementation;
 }

@@ -53,7 +53,7 @@ nothing and pushing nothing.
 `melos run deps:validate` checks these, so a violation fails the PR rather
 than the release:
 
-- no `publish_to: none` (that was why `pillar_remote_config` could never ship)
+- no `publish_to: none`
 - **no `path:` dependency** — pub.dev rejects them. Depend on siblings by
   version constraint; the pub workspace resolves it to the local package:
 
