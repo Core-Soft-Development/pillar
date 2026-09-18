@@ -1,0 +1,17 @@
+name: pillar_core_example
+description: Console example for pillar_core — modules, lifetimes and scopes.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ">=3.12.0 <4.0.0"
+
+# Resolved as part of the workspace declared in the root pubspec:
+# one lockfile and one .dart_tool for the whole repo.
+resolution: workspace
+
+dependencies:
+  pillar_core: ^0.1.0
+
+dev_dependencies:
+  lints: ^6.0.0

@@ -1,85 +1,34 @@
 # Scripts
 
-This directory contains utility scripts for development, building, and deployment of the Pillar monorepo.
+Everything here is either a one-off developer convenience (`.sh`) or a step the
+CI calls through a melos script (`.dart`).
 
-## Available Scripts
+Prefer `melos run <script>` over calling these directly — the melos scripts are
+what CI runs, so they are the definition that stays honest.
 
-### Development Scripts
+## Dart
 
-- `setup.sh` - Initial development environment setup
-- `bootstrap.sh` - Bootstrap the monorepo with all dependencies
-- `clean.sh` - Clean all packages and reset the workspace
+Called from melos scripts; see the `melos:` section of the root `pubspec.yaml`.
 
-### Build Scripts
+| File | Ran by | Does |
+|---|---|---|
+| `validate_deps.dart` | `melos run deps:validate` | Enforces the package layering rules: core depends on nothing, an interface sees only core, an implementation never sees another implementation, no cycles, no bare `path:` dependency, and pub.dev-ready metadata. |
+| `bom.dart` | `melos run bom:sync` / `bom:verify` | Regenerates the `pillar` BoM from published versions, or fails if it has drifted. |
+| `github_releases.dart` | the release workflow | Creates one GitHub release per tagged package, with the body taken from that package's changelog. |
+| `dart_files.dart` | `melos run format` / `format:check` | Lists hand-written Dart files, excluding generated sources. |
+| `melos_json.dart` | (library) | Decodes melos JSON output. melos interleaves notices into stdout, so the JSON cannot be handed straight to `jsonDecode`. |
 
-- `build_all.sh` - Build all packages and examples
-- `build_runner.sh` - Run code generation for all packages
-- `analyze.sh` - Run static analysis on all packages
+## Shell
 
-### Testing Scripts
+| File | Does |
+|---|---|
+| `setup.sh` | First-time setup: checks Flutter and Dart, installs the pinned melos, bootstraps, installs the git hooks. |
+| `bootstrap.sh` | Clean and re-bootstrap the workspace. |
+| `install_hooks.sh` | Installs `.githooks/commit-msg`, which validates Conventional Commits locally. |
 
-- `test_all.sh` - Run all tests across packages
-- `test_integration.sh` - Run integration tests
-- `coverage.sh` - Generate code coverage reports
+## Adding one
 
-### Release Scripts
-
-- `version.sh` - Update versions across packages
-- `publish.sh` - Publish packages to pub.dev
-- `release.sh` - Complete release workflow
-
-### Utility Scripts
-
-- `format.sh` - Format code across all packages
-- `deps_check.sh` - Check for dependency updates
-- `docs_generate.sh` - Generate API documentation
-
-## Usage
-
-All scripts should be run from the root directory of the monorepo:
-
-```bash
-# Make scripts executable
-chmod +x scripts/*.sh
-
-# Run a script
-./scripts/setup.sh
-```
-
-## Script Requirements
-
-When creating new scripts:
-
-1. **Make them executable**: `chmod +x script_name.sh`
-2. **Add error handling**: Use `set -e` to exit on errors
-3. **Include help text**: Add usage instructions
-4. **Test thoroughly**: Ensure scripts work in different environments
-5. **Document in this README**: Add description and usage
-
-## Environment Variables
-
-Scripts may use the following environment variables:
-
-- `FLUTTER_ROOT` - Path to Flutter SDK
-- `DART_ROOT` - Path to Dart SDK
-- `PUB_CACHE` - Pub cache directory
-- `CI` - Set to true in CI environments
-
-## CI/CD Integration
-
-These scripts are designed to work in both local development and CI/CD environments. They should:
-
-- Handle both interactive and non-interactive modes
-- Provide clear error messages
-- Exit with appropriate status codes
-- Be idempotent when possible
-
-## Contributing
-
-When adding new scripts:
-
-1. Follow the naming convention: `action_target.sh`
-2. Include proper error handling
-3. Add documentation to this README
-4. Test in multiple environments
-5. Consider CI/CD requirements
+Ask first whether it should be a melos script instead. A shell script in this
+directory is invisible to `melos run --help`, is not what CI executes, and
+tends to drift from it — this README previously documented fifteen scripts,
+none of which existed.

@@ -1,0 +1,4 @@
+# pillar_core is pure Dart, so it cannot include package:flutter_lints.
+include:
+  - package:lints/recommended.yaml
+  - ../../analysis_options_base.yaml

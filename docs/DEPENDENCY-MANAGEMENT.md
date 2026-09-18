@@ -17,14 +17,14 @@ Melos provides built-in solutions for this exact scenario through:
 ### 1. **Path Dependencies for Development**
 
 ```yaml
-# packages/pillar-remote-config/pubspec.yaml
+# packages/pillar_flutter/pubspec.yaml
 dependencies:
   pillar_core:
-    path: ../pillar-core  # ← Use during development
+    path: ../pillar_core  # ← Use during development
 ```
 
 **Benefits:**
-- ✅ **Instant feedback** - Changes in `pillar_core` immediately available in `pillar_remote_config`
+- ✅ **Instant feedback** - Changes in `pillar_core` immediately available in `pillar_flutter`
 - ✅ **No publishing required** - Work with unreleased features
 - ✅ **Consistent development** - All packages use same codebase state
 
@@ -33,16 +33,17 @@ dependencies:
 Melos configuration handles publication automatically:
 
 ```yaml
-# melos.yaml
-command:
-  version:
-    updateDependentsVersionConstraints: true
-    updateDependentsConstraints: true
+# pubspec.yaml (root)
+melos:
+  command:
+    version:
+      updateDependentsVersionConstraints: true
+      updateDependentsConstraints: true
 ```
 
 **How it works:**
-1. **During versioning** - Melos detects path dependencies
-2. **Converts automatically** - Path deps become version constraints
+1. **During versioning** - Melos finds every package depending on the bumped one
+2. **Updates constraints** - Their version ranges are rewritten to match
 3. **Updates dependents** - Downstream packages get correct version ranges
 4. **Publishes in order** - Dependencies first, then dependents
 
@@ -52,35 +53,35 @@ command:
 
 ```bash
 # 1. Make changes to pillar_core
-echo "// New feature" >> packages/pillar-core/lib/src/new_feature.dart
+echo "// New feature" >> packages/pillar_core/lib/src/new_feature.dart
 
 # 2. Test locally (uses path dependencies)
 melos test
 
 # 3. Version and publish (Melos handles everything)
-melos version --minor
+melos run release:version
 # Melos will:
-# - Version pillar_core to 1.1.0
-# - Update pillar_remote_config to depend on "pillar_core: ^1.1.0"
+# - Version pillar_core to 0.2.0, from the feat: commits
+# - Update pillar_flutter to depend on "pillar_core: ^0.2.0"
 # - Publish pillar_core first
-# - Then publish pillar_remote_config
+# - Then publish pillar_flutter
 ```
 
 ### Scenario 2: Breaking Change in pillar_core
 
 ```bash
 # 1. Make breaking changes
-# Edit packages/pillar-core/lib/pillar_core.dart
+# Edit packages/pillar_core/lib/pillar_core.dart
 
 # 2. Update dependent packages to handle breaking changes
-# Edit packages/pillar-remote-config/lib/src/service.dart
+# Edit packages/pillar_flutter/lib/src/pillar_scope.dart
 
 # 3. Version with major bump
-melos version --major
+melos run release:version
 # Melos will:
-# - Version pillar_core to 2.0.0
-# - Update pillar_remote_config dependency to "pillar_core: ^2.0.0"
-# - Version pillar_remote_config (major bump due to breaking dep change)
+# - Version pillar_core to 1.0.0, from the `feat!:` breaking marker
+# - Update pillar_flutter dependency to "pillar_core: ^1.0.0"
+# - Version pillar_flutter (major bump due to breaking dep change)
 # - Publish in correct order
 ```
 
@@ -97,7 +98,7 @@ name: pillar_analytics
 version: 0.1.0
 dependencies:
   pillar_core:
-    path: ../pillar-core  # ← Development dependency
+    path: ../pillar_core  # ← Development dependency
 EOF
 
 # 3. Develop and test locally
@@ -105,27 +106,41 @@ melos bootstrap
 melos test
 
 # 4. When ready to publish
-melos version --minor
-# Melos automatically converts to: pillar_core: ^1.0.0
+melos version pillar_core minor --yes
+# Dependents are rewritten to: pillar_core: ^1.1.0
 ```
 
 ## 🔧 Technical Implementation
 
-### pubspec_overrides.yaml (Automatic)
+### Pub workspace resolution
 
-Melos creates override files during bootstrap:
+The repo is a [pub workspace](https://dart.dev/tools/pub/workspaces): the root
+pubspec lists its members under `workspace:`, and each package declares
+`resolution: workspace`.
 
 ```yaml
-# packages/pillar-remote-config/pubspec_overrides.yaml (auto-generated)
-dependency_overrides:
-  pillar_core:
-    path: ../pillar-core
+# pubspec.yaml (root)
+workspace:
+  - packages/pillar_core
+  - packages/pillar_flutter
 ```
 
-**Purpose:**
-- Ensures local development uses path dependencies
-- Doesn't interfere with publication
-- Automatically managed by Melos
+```yaml
+# packages/pillar_flutter/pubspec.yaml
+resolution: workspace
+
+dependencies:
+  pillar_core: ^1.0.0     # resolved to the local package
+```
+
+**What this gives you:**
+- One `pubspec.lock` and one `.dart_tool/` for the whole repo, not one per package
+- Sibling packages resolve locally from a plain version constraint
+- No generated `pubspec_overrides.yaml` to commit, ignore, or conflict on
+
+Before pub workspaces existed, melos emulated this by writing a
+`pubspec_overrides.yaml` into each package (`usePubspecOverrides: true`). That
+mechanism is gone; the SDK does it natively.
 
 ### Version Constraint Updates
 
@@ -135,7 +150,7 @@ During `melos version`, path dependencies are converted:
 # BEFORE versioning (development)
 dependencies:
   pillar_core:
-    path: ../pillar-core
+    path: ../pillar_core
 
 # AFTER versioning (ready for publication)
 dependencies:
@@ -148,7 +163,7 @@ Melos automatically determines publication order:
 
 ```
 1. pillar_core (no dependencies)
-2. pillar_remote_config (depends on pillar_core)
+2. pillar_flutter (depends on pillar_core)
 3. pillar_analytics (depends on pillar_core)
 ```
 
@@ -157,14 +172,12 @@ Melos automatically determines publication order:
 ### Melos Configuration
 
 ```yaml
-# melos.yaml
-command:
-  bootstrap:
-    usePubspecOverrides: true  # Enable override files
-  
-  version:
-    updateDependentsVersionConstraints: true  # Update version ranges
-    updateDependentsConstraints: true         # Update all constraints
+# pubspec.yaml (root) — melos reads its config from here in a workspace
+melos:
+  command:
+    version:
+      updateDependentsVersionConstraints: true  # Update version ranges
+      updateDependentsConstraints: true         # Update all constraints
 ```
 
 ### Analysis Configuration
@@ -186,7 +199,7 @@ analyzer:
 # ✅ GOOD - Always use path in source
 dependencies:
   pillar_core:
-    path: ../pillar-core
+    path: ../pillar_core
 
 # ❌ BAD - Don't use version constraints in source
 dependencies:
@@ -197,7 +210,7 @@ dependencies:
 
 ```bash
 # ✅ GOOD - Let Melos update versions
-melos version --major
+melos run release:version   # major comes from a `feat!:` commit
 
 # ❌ BAD - Don't manually update version constraints
 # (editing pubspec.yaml to change pillar_core: ^1.0.0 to ^2.0.0)
@@ -211,7 +224,7 @@ melos test
 melos analyze
 
 # Then version and publish
-melos version --minor
+melos run release:version   # minor comes from a `feat:` commit
 ```
 
 ### 4. Use Conventional Commits
@@ -238,7 +251,7 @@ git commit -m "fix: resolve memory leak"
 **Solution:**
 ```bash
 # Use Melos versioning (not manual)
-melos version --patch  # Instead of: dart pub version patch
+melos run release:version   # patch comes from a `fix:` commit
 ```
 
 ### Issue: Dependency Version Conflicts
@@ -265,7 +278,7 @@ melos list --graph
 ```bash
 # Publish manually in order
 melos publish --scope="pillar_core"
-melos publish --scope="pillar_remote_config"
+melos publish --scope="pillar_flutter"
 ```
 
 ## 📊 Development Workflow
@@ -293,7 +306,7 @@ git add .
 git commit -m "feat: new feature complete"
 
 # 2. Version (converts path deps to version constraints)
-melos version --minor
+melos run release:version   # minor comes from a `feat:` commit
 
 # 3. Publish (handles order automatically)
 melos publish --yes

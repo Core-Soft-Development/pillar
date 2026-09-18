@@ -21,14 +21,11 @@ melos clean || true
 echo "📦 Running melos bootstrap..."
 melos bootstrap
 
-# Run pub get on all packages
-echo "📦 Running pub get on all packages..."
-melos pub:get
-
 echo "✅ Bootstrap complete!"
 echo ""
 echo "Next steps:"
-echo "  melos analyze    - Run static analysis"
-echo "  melos test       - Run tests"
-echo "  melos format     - Format code"
+echo "  melos run ci:verify - everything a pull request must pass"
+echo "  melos run analyze   - static analysis"
+echo "  melos run test      - tests"
+echo "  melos run format    - format code"
 echo ""

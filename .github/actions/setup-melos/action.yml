@@ -1,0 +1,67 @@
+name: Setup Melos workspace
+description: >
+  Installs Flutter and melos at the versions this repo pins, restores the pub
+  cache, and bootstraps the workspace. Every job uses this so that no job can
+  drift onto a different toolchain.
+
+inputs:
+  bootstrap:
+    description: Whether to run `melos bootstrap`. Set to false for jobs that only read files.
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    # Versions live in .fvmrc and pubspec.lock rather than in each workflow,
+    # so local machines and CI cannot disagree about the toolchain.
+    - name: Resolve pinned toolchain versions
+      id: versions
+      shell: bash
+      run: |
+        set -euo pipefail
+        flutter_version="$(jq -r '.flutter' .fvmrc)"
+        melos_version="$(awk '/^  melos:/{f=1} f && /^    version:/{gsub(/"/,"",$2); print $2; exit}' pubspec.lock)"
+
+        if [ -z "$flutter_version" ] || [ "$flutter_version" = "null" ]; then
+          echo "::error::Could not read the Flutter version from .fvmrc"
+          exit 1
+        fi
+        if [ -z "$melos_version" ]; then
+          echo "::error::Could not read the melos version from pubspec.lock"
+          exit 1
+        fi
+
+        echo "flutter=$flutter_version" >> "$GITHUB_OUTPUT"
+        echo "melos=$melos_version" >> "$GITHUB_OUTPUT"
+        echo "Flutter $flutter_version · melos $melos_version"
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+      with:
+        flutter-version: ${{ steps.versions.outputs.flutter }}
+        channel: stable
+        cache: true
+
+    # The pub cache is the expensive part of a cold job: restoring it turns a
+    # multi-minute resolve into seconds.
+    - name: Restore pub cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.pub-cache
+        key: pub-${{ runner.os }}-${{ steps.versions.outputs.flutter }}-${{ hashFiles('**/pubspec.yaml', 'pubspec.lock') }}
+        restore-keys: |
+          pub-${{ runner.os }}-${{ steps.versions.outputs.flutter }}-
+          pub-${{ runner.os }}-
+
+    - name: Install melos
+      shell: bash
+      run: |
+        set -euo pipefail
+        dart pub global activate melos "${{ steps.versions.outputs.melos }}"
+        echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+
+    - name: Bootstrap workspace
+      if: inputs.bootstrap == 'true'
+      shell: bash
+      run: melos bootstrap

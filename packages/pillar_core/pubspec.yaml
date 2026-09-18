@@ -1,0 +1,27 @@
+name: pillar_core
+description: >-
+  The foundation of the Pillar framework: a pure-Dart dependency injector,
+  module system and the error and layering contracts every Pillar package
+  builds on.
+version: 0.1.0
+homepage: https://github.com/Core-Soft-Development/pillar
+repository: https://github.com/Core-Soft-Development/pillar
+issue_tracker: https://github.com/Core-Soft-Development/pillar/issues
+
+# Pure Dart. No `flutter:` constraint, no Flutter SDK dependency, and
+# `deps:validate` fails the build if either reappears — an interface package
+# that pulls in a UI toolkit stops being usable from a server or a CLI.
+environment:
+  sdk: ">=3.12.0 <4.0.0"
+
+# Resolved as part of the workspace declared in the root pubspec:
+# one lockfile and one .dart_tool for the whole repo.
+resolution: workspace
+
+dependencies:
+  meta: ^1.12.0
+
+dev_dependencies:
+  coverage: ^1.11.0
+  lints: ^6.0.0
+  test: ^1.25.0

@@ -145,3 +145,7 @@ yarn-error.log*
 
 # FVM Version Cache
 .fvm/
+# Pub workspace: resolution happens at the root, so member packages have
+# neither a lockfile nor the pubspec_overrides.yaml melos used to generate.
+pubspec_overrides.yaml
+packages/**/pubspec.lock

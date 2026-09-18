@@ -186,7 +186,7 @@ When creating a PR to `main`, the CI will comment with:
 
 This PR will affect the following packages:
 - pillar_core: 1.1.0 → 2.0.0 (major - breaking changes)
-- pillar_remote_config: 1.1.0 → 2.0.0 (major - dependency update)
+- pillar_flutter: 0.1.0 → 0.2.0 (minor - dependency update)
 
 ⚠️ Breaking Changes Detected
 This PR contains breaking changes and will trigger a MAJOR version bump.

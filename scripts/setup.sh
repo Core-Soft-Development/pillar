@@ -22,25 +22,35 @@ fi
 
 echo "✅ Flutter and Dart are installed"
 
+PINNED_FLUTTER="$(sed -n 's/.*"flutter"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' .fvmrc)"
+LOCAL_FLUTTER="$(flutter --version 2>/dev/null | sed -n '1s/^Flutter \([^ ]*\).*/\1/p')"
+if [ -n "$PINNED_FLUTTER" ] && [ "$PINNED_FLUTTER" != "$LOCAL_FLUTTER" ]; then
+    echo "⚠️  Flutter $LOCAL_FLUTTER is installed, but this repo pins $PINNED_FLUTTER (.fvmrc)."
+    echo "    CI builds on $PINNED_FLUTTER — with fvm: fvm use $PINNED_FLUTTER"
+fi
+
 # Check Flutter doctor
 echo "🔍 Running Flutter doctor..."
 flutter doctor
 
-# Install Melos globally if not already installed
-if ! command -v melos &> /dev/null; then
-    echo "📦 Installing Melos..."
-    dart pub global activate melos
+# Install the melos version this repo pins, not whatever is latest. pubspec.lock
+# is the same source the CI reads, so local and CI cannot drift apart.
+MELOS_VERSION="$(awk '/^  melos:/{f=1} f && /^    version:/{gsub(/"/,"",$2); print $2; exit}' pubspec.lock)"
+if [ -z "$MELOS_VERSION" ]; then
+    echo "❌ Could not read the melos version from pubspec.lock"
+    exit 1
+fi
+
+if [ "$(melos --version 2>/dev/null | head -1)" = "$MELOS_VERSION" ]; then
+    echo "✅ Melos $MELOS_VERSION is already installed"
 else
-    echo "✅ Melos is already installed"
+    echo "📦 Installing Melos $MELOS_VERSION..."
+    dart pub global activate melos "$MELOS_VERSION"
 fi
 
 # Bootstrap the workspace
 echo "🔧 Bootstrapping workspace..."
 melos bootstrap
-
-# Run pub get on root
-echo "📦 Running pub get on root..."
-flutter pub get
 
 echo "✅ Setup complete!"
 
@@ -56,10 +66,10 @@ echo ""
 echo "🎉 You can now start developing with Pillar!"
 echo ""
 echo "Available commands:"
-echo "  melos analyze    - Run static analysis"
-echo "  melos test       - Run tests"
-echo "  melos format     - Format code"
-echo "  melos clean      - Clean workspace"
+echo "  melos run ci:verify - everything a pull request must pass"
+echo "  melos run analyze   - static analysis"
+echo "  melos run test      - tests"
+echo "  melos run format    - format code"
 echo ""
 echo "📝 Remember: All commits must follow Conventional Commits format!"
 echo "   Example: feat: add user authentication"

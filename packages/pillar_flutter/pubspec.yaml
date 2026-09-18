@@ -1,0 +1,31 @@
+name: pillar_flutter
+description: >-
+  Flutter bindings for the Pillar framework: exposes a pillar_core dependency
+  container to a widget tree and provides the base class for presentation-layer
+  state holders.
+version: 0.1.0
+homepage: https://github.com/Core-Soft-Development/pillar
+repository: https://github.com/Core-Soft-Development/pillar
+issue_tracker: https://github.com/Core-Soft-Development/pillar/issues
+
+environment:
+  sdk: ">=3.12.0 <4.0.0"
+  flutter: ">=3.44.0"
+
+# Resolved as part of the workspace declared in the root pubspec:
+# one lockfile and one .dart_tool for the whole repo.
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+  meta: ^1.12.0
+  pillar_core: ^0.1.0
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: false

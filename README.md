@@ -50,22 +50,22 @@ melos bootstrap
 
 ### Available Scripts
 
-- `melos analyze` - Run static analysis on all packages
-- `melos test` - Run tests for all packages
-- `melos format` - Format code across all packages
-- `melos build_runner` - Generate code using build_runner
-- `melos pub:get` - Run pub get on all packages
-- `melos pub:upgrade` - Upgrade dependencies for all packages
+- `melos run ci:verify` - everything a pull request must pass
+- `melos run analyze` - static analysis across all packages
+- `melos run test` - tests for every package that has them
+- `melos run format` - format code (`format:check` to verify without writing)
+- `melos run deps:validate` - enforce the package layering rules
+- `melos run build_runner` - generate code
+- `melos run deps:upgrade` - upgrade dependencies, then re-bootstrap
 
 ### Project Structure
 
 ```
 pillar/
-├── packages/           # All Flutter packages
+├── packages/           # All Flutter packages, grouped by domain
 ├── docs/              # Documentation
 ├── scripts/           # Build and utility scripts
-├── melos.yaml         # Melos configuration
-├── pubspec.yaml       # Root pubspec
+├── pubspec.yaml       # Workspace + melos configuration
 └── analysis_options.yaml # Dart analysis configuration
 ```
 
@@ -73,8 +73,15 @@ pillar/
 
 This monorepo contains the following packages:
 
-- **[pillar_core](packages/pillar-core)** - Core package with clean architecture foundation and dependency injection
-- **[pillar_remote_config](packages/pillar-remote-config)** - Remote configuration management
+- **[pillar_core](packages/pillar_core)** — contracts, dependency injection and
+  error types. Pure Dart, so it runs in a server or a CLI as well as an app.
+- **[pillar_flutter](packages/pillar_flutter)** — the seam between the container
+  and a widget tree: `PillarScope`, `context.get<T>()`, `BaseProvider`.
+- **[pillar](packages/pillar)** — the Bill of Materials, pinning a released set.
+
+Domain packages get added around this core, one folder per domain. See
+[packages/README.md](packages/README.md) for the layout and the rules between
+tiers.
 
 ## 🔄 Versioning & Release Management
 
@@ -82,23 +89,23 @@ This monorepo uses [Melos](https://melos.invertase.dev/) for package management 
 
 ### Quick Commands
 
+Packages are versioned **independently** — each from its own conventional
+commits — and the `pillar` [Bill of Materials](packages/pillar/README.md) pins a
+set that was released together. Same model as Firebase.
+
 ```bash
-# Check current versions
-melos run version:check
+# What would the next release version?
+melos run release:preview
 
-# Local release (development)
-melos run release:local
+# Ask pub.dev to validate every package, without publishing
+melos run release:rehearse
 
-# Production release
-melos run release:publish
-
-# Check dependencies
+# Inspect the dependency graph
 melos run deps:graph
-
-# Handle breaking changes
-melos run breaking:check
-melos run breaking:update
 ```
+
+Releases run in CI on every push to `main`: nothing is written to git until
+pub.dev has accepted every package. See [docs/PUBLISHING.md](docs/PUBLISHING.md).
 
 ## Contributing
 

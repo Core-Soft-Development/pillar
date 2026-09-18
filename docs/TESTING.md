@@ -5,48 +5,44 @@ This guide explains the testing strategy and available test scripts for the Pill
 ## 📋 Available Test Scripts
 
 ### `melos run test`
-**Default test script** - Runs tests for all packages except examples.
+
+Runs `flutter test` in every package that has a `test/` directory. Packages
+without one are skipped rather than failing.
+
 ```bash
 melos run test
 ```
-- ✅ Excludes example applications (which may not have tests)
-- ✅ Fast execution by ignoring non-essential packages
-- ✅ Recommended for CI/CD pipelines
 
-### `melos run test:all`
-**Comprehensive testing** - Runs tests only for packages that have a `test/` directory.
-```bash
-melos run test:all
-```
-- ✅ Automatically detects packages with tests
-- ✅ Skips packages without test directories
-- ✅ Safe for all scenarios
+### `melos run test:coverage`
 
-### `melos run test:with-examples`
-**Inclusive testing** - Attempts to run tests for all packages with error tolerance.
-```bash
-melos run test:with-examples
-```
-- ⚠️ May show errors for packages without tests
-- ✅ Continues execution even if some packages fail
-- 🔍 Useful for debugging test coverage
+The same, with `--coverage`, writing `<package>/coverage/lcov.info`. Runs in
+`extended-checks.yml` rather than on every pull request.
 
-### `melos run test:integration`
-**Integration tests** - Runs integration tests across packages.
 ```bash
-melos run test:integration
+melos run test:coverage
 ```
-- 🧪 Runs `flutter test integration_test`
-- 🔗 Tests inter-package interactions
-- 🚀 End-to-end testing scenarios
+
+### `melos run ci:verify`
+
+Analyze, format check, dependency-graph validation and tests — exactly what a
+pull request runs, so you can reproduce a CI failure locally.
+
+```bash
+melos run ci:verify
+```
+
+There is no integration-test script: no package ships an `integration_test/`
+directory yet. Add one alongside the first package that needs it, rather than
+carrying a script that runs nothing.
+
 
 ## 📦 Package Testing Strategy
 
 ### Core Packages (Required Tests)
 These packages **must** have comprehensive tests:
-- ✅ `pillar_core` - Foundation package with DI and architecture
-- ✅ `pillar_remote_config` - Remote configuration management
-- ✅ Future core packages
+- ✅ `pillar_core` — contracts, dependency injection, error types
+- ✅ `pillar_flutter` — the seam between the container and widgets
+- ✅ Every package added later
 
 ### Example Packages (Optional Tests)
 These packages typically **don't need** tests:
@@ -115,25 +111,28 @@ void main() {
 ## 🚀 CI/CD Integration
 
 ### GitHub Actions
-The CI/CD pipeline uses `test:all` to ensure only packages with tests are executed:
+Tests run as part of `melos run ci:verify`, which is what a pull request
+executes — the same command you can run locally:
 
 ```yaml
-- name: 🧪 Run tests
-  run: melos run test:all
+- name: Analyze, format, validate graph, test
+  run: melos run ci:verify
 ```
+
+Coverage runs separately, in `extended-checks.yml`, on demand.
 
 ### Local Development
 For local development, use the appropriate script based on your needs:
 
 ```bash
-# Quick test run (recommended)
+# Fast loop
 melos run test
 
-# Comprehensive testing
-melos run test:all
+# With lcov output under <package>/coverage/
+melos run test:coverage
 
-# Debug test coverage
-melos run test:with-examples
+# Everything a PR must pass
+melos run ci:verify
 ```
 
 ## 📊 Test Coverage
@@ -161,7 +160,7 @@ melos exec --dir-exists="test" -- "genhtml coverage/lcov.info -o coverage/html"
 #### Package Without Tests
 **Error**: `Test directory "test" does not appear to contain any test files.`
 **Solutions**:
-1. Use `melos run test:all` instead of `melos run test:with-examples`
+1. Use `melos run test` for the fast loop; `melos run test:coverage` when you need lcov output
 2. Create a test directory with at least one test file
 3. Exclude the package from test scripts
 

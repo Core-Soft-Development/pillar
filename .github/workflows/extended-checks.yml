@@ -1,0 +1,68 @@
+name: Extended Checks
+
+# The slow checks, kept off the PR path on purpose.
+#
+# Building every example app takes minutes per app, and it used to run on
+# every push and every pull request with continue-on-error set — so it cost
+# the time without ever being able to fail the build. Run it on demand
+# instead, or before a release that touches example code.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: extended-checks
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  examples:
+    name: Build example apps
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-melos
+
+      - name: Build every example app
+        run: melos run build:examples
+
+  coverage:
+    name: Test coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-melos
+
+      # `flutter test` was previously run without --coverage while a codecov
+      # step uploaded ./coverage/lcov.info from the repo root — a path nothing
+      # ever wrote. Coverage is produced here, per package, and reported in the
+      # job summary rather than shipped to a service that is not set up.
+      - name: Run tests with coverage
+        run: melos run test:coverage
+
+      - name: Summarise coverage
+        run: |
+          set -euo pipefail
+          {
+            echo "## Coverage by package"
+            echo ""
+            echo "| Package | Lines hit | Lines found | % |"
+            echo "|---|---:|---:|---:|"
+            while IFS= read -r lcov; do
+              package="$(basename "$(dirname "$(dirname "$lcov")")")"
+              hit="$(awk -F: '/^LH:/ {s+=$2} END {print s+0}' "$lcov")"
+              found="$(awk -F: '/^LF:/ {s+=$2} END {print s+0}' "$lcov")"
+              if [ "$found" -gt 0 ]; then
+                pct="$(awk -v h="$hit" -v f="$found" 'BEGIN {printf "%.1f", 100*h/f}')"
+              else
+                pct="n/a"
+              fi
+              echo "| $package | $hit | $found | $pct |"
+            done < <(find packages -name lcov.info -path '*/coverage/*' | sort)
+          } >> "$GITHUB_STEP_SUMMARY"
